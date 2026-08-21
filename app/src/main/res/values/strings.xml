@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Mgeni</string>
+    <string name="portal_default_url">http://10.10.10.10/login.html</string>
+    <string name="connectivity_check_url">http://connectivitycheck.gstatic.com/generate_204</string>
+</resources>

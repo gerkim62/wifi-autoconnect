@@ -1,0 +1,44 @@
+package com.mgeni.autologin.ui.viewmodel
+
+sealed interface MainUiState {
+    // 1. Splash / Checking connection screen
+    data object CheckingConnection : MainUiState
+
+    // 2. Already connected screen
+    data object AlreadyConnected : MainUiState
+
+    // 3. Not on Guest Wi-Fi / connection unreachable screen
+    data class NotOnGuestNetwork(
+        val errorMessage: String = "Make sure you're connected to the Guest Wi-Fi network, then try again."
+    ) : MainUiState
+
+    // 4. Login screen
+    data class LoginForm(
+        val username: String = "",
+        val password: String = "",
+        val rememberMe: Boolean = true,
+        val errorMessage: String? = null,
+        val isSubmitting: Boolean = false
+    ) : MainUiState
+
+    // 5. Connecting screen
+    data class Connecting(
+        val statusMessage: String = "Logging in…"
+    ) : MainUiState
+
+    // 6. Success screen
+    data object Success : MainUiState
+
+    // 7. Login failed screen
+    data class LoginFailed(
+        val errorMessage: String = "Your username or password may be incorrect.",
+        val savedUsername: String = ""
+    ) : MainUiState
+
+    // 8. Advanced Settings screen
+    data class AdvancedSettings(
+        val portalUrl: String,
+        val isDefault: Boolean,
+        val previousState: MainUiState
+    ) : MainUiState
+}
