@@ -1,5 +1,6 @@
 package com.mgeni.autologin.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,18 +49,22 @@ import androidx.compose.ui.unit.sp
 import com.mgeni.autologin.data.PreferencesManager
 import com.mgeni.autologin.ui.components.PrimaryActionButton
 import com.mgeni.autologin.ui.components.SecondaryActionButton
+import com.mgeni.autologin.ui.theme.ErrorContainerDark
+import com.mgeni.autologin.ui.theme.ErrorContainerLight
+import com.mgeni.autologin.ui.theme.ErrorRed
 import com.mgeni.autologin.ui.theme.WarningAmber
 import com.mgeni.autologin.ui.theme.WarningContainerDark
 import com.mgeni.autologin.ui.theme.WarningContainerLight
 
 /**
  * Screen 8: Advanced Settings Screen
- * Allows customizing captive portal URL with a warning banner.
+ * Allows customizing captive portal URL with safety guidance and URL validation.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdvancedSettingsScreen(
     currentPortalUrl: String,
+    errorMessage: String? = null,
     onSaveClick: (newUrl: String) -> Unit,
     onResetToDefaultClick: () -> Unit,
     onBackClick: () -> Unit,
@@ -139,7 +144,28 @@ fun AdvancedSettingsScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Validation Error Banner (if any)
+                AnimatedVisibility(visible = !errorMessage.isNullOrBlank()) {
+                    val errorBg = if (isDark) ErrorContainerDark else ErrorContainerLight
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(errorBg)
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = errorMessage ?: "",
+                            style = MaterialTheme.typography.bodyMedium.copy(color = ErrorRed, fontSize = 13.sp)
+                        )
+                    }
+                }
+
+                if (!errorMessage.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
 
                 Text(
                     text = "Portal URL",

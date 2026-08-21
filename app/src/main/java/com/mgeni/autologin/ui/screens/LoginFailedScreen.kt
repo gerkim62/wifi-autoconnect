@@ -18,17 +18,19 @@ import androidx.compose.ui.unit.dp
 import com.mgeni.autologin.ui.components.ErrorStatusIcon
 import com.mgeni.autologin.ui.components.MobileDataWarningBanner
 import com.mgeni.autologin.ui.components.PrimaryActionButton
+import com.mgeni.autologin.ui.components.SecondaryActionButton
 
 /**
  * Screen 7: Login Failed Screen
- * Shown when post-submit 204 check does not return 204.
+ * Features two options: Try again (re-submit last credentials) and Edit credentials.
  */
 @Composable
 fun LoginFailedScreen(
     errorMessage: String,
     savedUsername: String,
     isCellularActive: Boolean,
-    onTryAgainClick: (username: String) -> Unit,
+    onTryAgainClick: () -> Unit,
+    onEditCredentialsClick: (username: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -71,10 +73,21 @@ fun LoginFailedScreen(
                 )
             }
 
-            PrimaryActionButton(
-                text = "Try again",
-                onClick = { onTryAgainClick(savedUsername) }
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                PrimaryActionButton(
+                    text = "Try again",
+                    onClick = onTryAgainClick
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                SecondaryActionButton(
+                    text = "Edit credentials",
+                    onClick = { onEditCredentialsClick(savedUsername) }
+                )
+            }
         }
     }
 }

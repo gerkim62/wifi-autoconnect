@@ -9,6 +9,15 @@ import org.junit.Test
 class MainUiStateTest {
 
     @Test
+    fun `CheckingConnection defaults are correct`() {
+        val splash = MainUiState.CheckingConnection()
+        assertFalse(splash.isTakingLong)
+
+        val delayedSplash = MainUiState.CheckingConnection(isTakingLong = true)
+        assertTrue(delayedSplash.isTakingLong)
+    }
+
+    @Test
     fun `LoginForm defaults are correct`() {
         val form = MainUiState.LoginForm(
             username = "testuser",
@@ -32,15 +41,17 @@ class MainUiStateTest {
     }
 
     @Test
-    fun `AdvancedSettings stores previous state and defaults`() {
+    fun `AdvancedSettings stores previous state and error message`() {
         val previous = MainUiState.LoginForm(username = "user1")
         val settings = MainUiState.AdvancedSettings(
             portalUrl = "http://10.10.10.10/login.html",
             isDefault = true,
+            errorMessage = "Invalid URL format",
             previousState = previous
         )
         assertEquals("http://10.10.10.10/login.html", settings.portalUrl)
         assertTrue(settings.isDefault)
+        assertEquals("Invalid URL format", settings.errorMessage)
         assertEquals(previous, settings.previousState)
     }
 }

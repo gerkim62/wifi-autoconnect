@@ -1,5 +1,6 @@
 package com.mgeni.autologin.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,16 +21,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.mgeni.autologin.ui.theme.EmeraldContainer
 import com.mgeni.autologin.ui.theme.EmeraldPrimary
 
 /**
  * Screen 1: Splash / Loading Screen
- * Shown immediately on app open while the 204 check runs.
+ * Shown immediately on app open while the 204 check runs, with progressive delay notice.
  */
 @Composable
 fun SplashScreen(
+    isTakingLong: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -81,6 +84,20 @@ fun SplashScreen(
                 modifier = Modifier.size(32.dp),
                 strokeWidth = 3.dp
             )
+
+            AnimatedVisibility(visible = isTakingLong) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(top = 24.dp, start = 16.dp, end = 16.dp)
+                ) {
+                    Text(
+                        text = "This is taking longer than usual. Please ensure you are connected to the Guest Wi-Fi network…",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
         }
     }
 }

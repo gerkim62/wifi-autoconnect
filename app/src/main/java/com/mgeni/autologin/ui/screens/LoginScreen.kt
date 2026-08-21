@@ -61,7 +61,7 @@ import com.mgeni.autologin.ui.theme.ErrorRed
 
 /**
  * Screen 4: Login Screen
- * Shown when captive portal is detected and no credentials exist (or after login attempt).
+ * With double-tap prevention and error banner support.
  */
 @Composable
 fun LoginScreen(
@@ -78,9 +78,18 @@ fun LoginScreen(
     var password by remember(initialPassword) { mutableStateOf(initialPassword) }
     var rememberMe by remember(initialRememberMe) { mutableStateOf(initialRememberMe) }
     var passwordVisible by remember { mutableStateOf(false) }
+    var isSubmitting by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
+
+    val triggerSubmit = {
+        if (!isSubmitting) {
+            isSubmitting = true
+            focusManager.clearFocus()
+            onConnectClick(username, password, rememberMe)
+        }
+    }
 
     Box(
         modifier = modifier
@@ -138,7 +147,7 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Error banner (if any)
+                // Error banner (e.g. Wrong username or password. Try again.)
                 AnimatedVisibility(visible = !errorMessage.isNullOrBlank()) {
                     val isDark = MaterialTheme.colorScheme.background.red < 0.5f
                     val errorBg = if (isDark) ErrorContainerDark else ErrorContainerLight
@@ -173,6 +182,7 @@ fun LoginScreen(
                         )
                     },
                     singleLine = true,
+                    enabled = !isSubmitting,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Text,
                         imeAction = ImeAction.Next
@@ -212,15 +222,13 @@ fun LoginScreen(
                     },
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     singleLine = true,
+                    enabled = !isSubmitting,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(
-                        onDone = {
-                            focusManager.clearFocus()
-                            onConnectClick(username, password, rememberMe)
-                        }
+                        onDone = { triggerSubmit() }
                     ),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -238,12 +246,13 @@ fun LoginScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { rememberMe = !rememberMe }
+                        .clickable(enabled = !isSubmitting) { rememberMe = !rememberMe }
                         .padding(vertical = 4.dp)
                 ) {
                     Checkbox(
                         checked = rememberMe,
-                        onCheckedChange = { rememberMe = it },
+                        onCheckedChange = { if (!isSubmitting) rememberMe = it },
+                        enabled = !isSubmitting,
                         colors = CheckboxDefaults.colors(
                             checkedColor = EmeraldPrimary
                         )
@@ -266,16 +275,17 @@ fun LoginScreen(
             ) {
                 PrimaryActionButton(
                     text = "Connect",
-                    onClick = {
-                        focusManager.clearFocus()
-                        onConnectClick(username, password, rememberMe)
-                    }
+                    onClick = triggerSubmit,
+                    enabled = !isSubmitting,
+                    isLoading = isSubmitting
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 AdvancedSettingsLink(
-                    onClick = onAdvancedSettingsClick
+                    onClick = {
+                        if (!isSubmitting) onAdvancedSettingsClick()
+                    }
                 )
             }
         }

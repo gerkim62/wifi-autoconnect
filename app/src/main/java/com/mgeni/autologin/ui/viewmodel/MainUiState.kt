@@ -2,7 +2,9 @@ package com.mgeni.autologin.ui.viewmodel
 
 sealed interface MainUiState {
     // 1. Splash / Checking connection screen
-    data object CheckingConnection : MainUiState
+    data class CheckingConnection(
+        val isTakingLong: Boolean = false
+    ) : MainUiState
 
     // 2. Already connected screen
     data object AlreadyConnected : MainUiState
@@ -23,7 +25,8 @@ sealed interface MainUiState {
 
     // 5. Connecting screen
     data class Connecting(
-        val statusMessage: String = "Logging in…"
+        val statusMessage: String = "Logging in…",
+        val isTakingLong: Boolean = false
     ) : MainUiState
 
     // 6. Success screen
@@ -39,6 +42,7 @@ sealed interface MainUiState {
     data class AdvancedSettings(
         val portalUrl: String,
         val isDefault: Boolean,
+        val errorMessage: String? = null,
         val previousState: MainUiState
     ) : MainUiState
 }

@@ -38,9 +38,9 @@ class PortalClient(
 
         fun createDefaultOkHttpClient(): OkHttpClient {
             return OkHttpClient.Builder()
-                .connectTimeout(8, TimeUnit.SECONDS)
-                .readTimeout(8, TimeUnit.SECONDS)
-                .writeTimeout(8, TimeUnit.SECONDS)
+                .connectTimeout(20, TimeUnit.SECONDS)
+                .readTimeout(20, TimeUnit.SECONDS)
+                .writeTimeout(20, TimeUnit.SECONDS)
                 .followRedirects(false)
                 .followSslRedirects(false)
                 .build()
@@ -76,7 +76,7 @@ class PortalClient(
             }
         } catch (e: IOException) {
             ConnectivityResult.Unreachable(
-                e.localizedMessage ?: "Unable to reach network endpoint."
+                "Make sure you're connected to the Guest Wi-Fi network."
             )
         } catch (e: Exception) {
             ConnectivityResult.Unreachable(
@@ -137,9 +137,9 @@ class PortalClient(
 
         // Action URL
         val form = doc.selectFirst("form")
-        val formAction = form?.attr("action")
+        val formAction = form?.attr("action")?.trim().orEmpty()
         val resolvedActionUrl = when {
-            formAction.isNullOrBlank() -> baseUrl
+            formAction.isBlank() -> baseUrl
             formAction.startsWith("http://", ignoreCase = true) || formAction.startsWith("https://", ignoreCase = true) -> formAction
             else -> {
                 val parsedBase = baseUrl.toHttpUrlOrNull()
@@ -201,7 +201,7 @@ class PortalClient(
             }
         } catch (e: Exception) {
             return@withContext LoginSubmitResult.Failed(
-                "Network error during login submission: ${e.localizedMessage}"
+                "Login failed. Network error during submission."
             )
         }
 
@@ -212,7 +212,7 @@ class PortalClient(
                 "Login failed. Your username or password may be incorrect."
             )
             is ConnectivityResult.Unreachable -> LoginSubmitResult.Failed(
-                "Connection check failed after login attempt: ${verifyResult.message}"
+                "Login failed. Check you're on Guest Wi-Fi."
             )
         }
     }

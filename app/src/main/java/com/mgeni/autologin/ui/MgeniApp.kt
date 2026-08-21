@@ -40,7 +40,9 @@ fun MgeniApp(
     ) { state ->
         when (state) {
             is MainUiState.CheckingConnection -> {
-                SplashScreen()
+                SplashScreen(
+                    isTakingLong = state.isTakingLong
+                )
             }
 
             is MainUiState.AlreadyConnected -> {
@@ -75,7 +77,8 @@ fun MgeniApp(
 
             is MainUiState.Connecting -> {
                 ConnectingScreen(
-                    statusMessage = state.statusMessage
+                    statusMessage = state.statusMessage,
+                    isTakingLong = state.isTakingLong
                 )
             }
 
@@ -91,8 +94,11 @@ fun MgeniApp(
                     errorMessage = state.errorMessage,
                     savedUsername = state.savedUsername,
                     isCellularActive = isCellularActive,
-                    onTryAgainClick = { savedUsername ->
-                        viewModel.retryAfterLoginFailed(savedUsername)
+                    onTryAgainClick = {
+                        viewModel.retryLastSubmittedCredentials()
+                    },
+                    onEditCredentialsClick = { username ->
+                        viewModel.editCredentials(username)
                     }
                 )
             }
@@ -104,6 +110,7 @@ fun MgeniApp(
 
                 AdvancedSettingsScreen(
                     currentPortalUrl = state.portalUrl,
+                    errorMessage = state.errorMessage,
                     onSaveClick = { newUrl ->
                         viewModel.saveAdvancedSettings(newUrl)
                     },
