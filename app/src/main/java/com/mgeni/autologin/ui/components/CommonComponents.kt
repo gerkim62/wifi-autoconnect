@@ -32,6 +32,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.mgeni.autologin.ui.theme.EmeraldPrimary
 import com.mgeni.autologin.ui.theme.ErrorRed
+import com.mgeni.autologin.ui.theme.WarningAmber
+import com.mgeni.autologin.ui.theme.WarningContainerDark
+import com.mgeni.autologin.ui.theme.WarningContainerLight
 
 @Composable
 fun StatusIcon(
@@ -75,6 +78,21 @@ fun ErrorStatusIcon(modifier: Modifier = Modifier) {
     StatusIcon(
         icon = Icons.Default.Close,
         iconColor = ErrorRed,
+        backgroundColor = bg,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun WarningStatusIcon(
+    icon: ImageVector,
+    modifier: Modifier = Modifier
+) {
+    val isDark = MaterialTheme.colorScheme.background.red < 0.5f
+    val bg = if (isDark) WarningContainerDark else WarningContainerLight
+    StatusIcon(
+        icon = icon,
+        iconColor = WarningAmber,
         backgroundColor = bg,
         modifier = modifier
     )

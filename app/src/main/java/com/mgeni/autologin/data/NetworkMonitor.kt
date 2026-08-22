@@ -2,6 +2,7 @@ package com.mgeni.autologin.data
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
@@ -42,8 +43,12 @@ open class NetworkMonitor(context: Context? = null) {
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            val capabilities = connectivityManager?.getNetworkCapabilities(network) ?: return
-            updateCapabilities(network, capabilities)
+            val capabilities = connectivityManager?.getNetworkCapabilities(network)
+            if (capabilities != null) {
+                updateCapabilities(network, capabilities)
+            } else {
+                updateNetworkStates()
+            }
         }
 
         override fun onLost(network: Network) {
@@ -58,6 +63,16 @@ open class NetworkMonitor(context: Context? = null) {
             networkCapabilities: NetworkCapabilities
         ) {
             updateCapabilities(network, networkCapabilities)
+            if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                _wifiChangeCount.value += 1L
+            }
+        }
+
+        override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
+            val capabilities = capabilitiesByNetwork[network] ?: connectivityManager?.getNetworkCapabilities(network)
+            if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
+                _wifiChangeCount.value += 1L
+            }
         }
     }
 
@@ -68,9 +83,7 @@ open class NetworkMonitor(context: Context? = null) {
 
     private fun register() {
         try {
-            val request = NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build()
+            val request = NetworkRequest.Builder().build()
             connectivityManager?.registerNetworkCallback(request, networkCallback)
         } catch (_: Exception) {
             // Ignore if restricted or unavailable
@@ -116,16 +129,13 @@ open class NetworkMonitor(context: Context? = null) {
     private fun publishNetworkStates() {
         val wifiNetworks = capabilitiesByNetwork.filter { (_, capabilities) ->
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
         }.keys
 
         val hasWifi = wifiNetworks.isNotEmpty()
         val hasCellular = capabilitiesByNetwork.values.any { capabilities ->
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED) &&
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
         }
 
         if (wifiNetworks != lastWifiNetworks) {

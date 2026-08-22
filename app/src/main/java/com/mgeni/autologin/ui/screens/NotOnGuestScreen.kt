@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.SignalCellularAlt
+import androidx.compose.material.icons.outlined.SignalWifiOff
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,10 +24,11 @@ import com.mgeni.autologin.ui.components.AdvancedSettingsLink
 import com.mgeni.autologin.ui.components.ErrorStatusIcon
 import com.mgeni.autologin.ui.components.MobileDataWarningBanner
 import com.mgeni.autologin.ui.components.PrimaryActionButton
+import com.mgeni.autologin.ui.components.WarningStatusIcon
 
 /**
  * Screen 3: Wi-Fi Disconnected / Unreachable Screen
- * Shown when the 204 check times out or fails.
+ * Shown when the 204 check times out, fails, or Wi-Fi is disconnected.
  */
 @Composable
 fun NotOnGuestScreen(
@@ -34,6 +38,26 @@ fun NotOnGuestScreen(
     onAdvancedSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isOnlyCellular = networkState == NetworkState.OnlyCellular
+    val isOffline = networkState == NetworkState.Offline
+    val isUnsupported = errorMessage.contains("not supported", ignoreCase = true)
+
+    val headline = when {
+        isOnlyCellular -> "Connected to mobile data"
+        isOffline -> "Wi-Fi is disconnected"
+        isUnsupported -> "Network not supported"
+        else -> "Can't reach the network"
+    }
+
+    val description = when {
+        isOnlyCellular -> "You are using mobile data, but WifiAuto requires Wi-Fi. Connect to the Guest Wi-Fi network to sign in."
+        isOffline -> "Wi-Fi is disconnected. Please turn on Wi-Fi and connect to the Guest network, then try again."
+        isUnsupported -> errorMessage
+        else -> errorMessage.ifBlank {
+            "Make sure you're connected to the Wi-Fi network, then try again."
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -46,7 +70,10 @@ fun NotOnGuestScreen(
                 .padding(vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            MobileDataWarningBanner(networkState = networkState)
+            // Show ambient advice banner when both Wi-Fi and Cellular are active
+            if (networkState == NetworkState.BothWifiAndCellular) {
+                MobileDataWarningBanner(networkState = networkState)
+            }
 
             Box(
                 modifier = Modifier
@@ -58,12 +85,16 @@ fun NotOnGuestScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 ) {
-                    ErrorStatusIcon()
+                    when {
+                        isOnlyCellular -> WarningStatusIcon(icon = Icons.Outlined.SignalCellularAlt)
+                        isOffline -> WarningStatusIcon(icon = Icons.Outlined.SignalWifiOff)
+                        else -> ErrorStatusIcon()
+                    }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
-                        text = "Can't reach the network",
+                        text = headline,
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                         textAlign = TextAlign.Center
@@ -72,9 +103,7 @@ fun NotOnGuestScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = errorMessage.ifBlank {
-                            "Make sure you're connected to the Wi-Fi network, then try again."
-                        },
+                        text = description,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center

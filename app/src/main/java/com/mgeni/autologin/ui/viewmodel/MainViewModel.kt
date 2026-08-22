@@ -98,7 +98,19 @@ class MainViewModel(
                 }
             }
 
-            val result = portalClient.check204Connectivity()
+            var result = portalClient.check204Connectivity()
+
+            // If Wi-Fi is actively establishing connection and first ping returned Unreachable,
+            // retry to allow DHCP negotiation to settle before failing
+            if (result is ConnectivityResult.Unreachable && networkMonitor.isWifiActive.value) {
+                for (retry in 1..2) {
+                    delay(600L)
+                    networkMonitor.updateNetworkStates()
+                    result = portalClient.check204Connectivity()
+                    if (result !is ConnectivityResult.Unreachable) break
+                }
+            }
+
             slowNoticeJob.cancel()
 
             when (result) {
