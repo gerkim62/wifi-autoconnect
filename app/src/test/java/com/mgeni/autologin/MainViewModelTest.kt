@@ -133,4 +133,59 @@ class MainViewModelTest {
         assertTrue("Expected to remain on LoginForm, got $state", state is MainUiState.LoginForm)
         assertEquals("testuser", (state as MainUiState.LoginForm).username)
     }
+
+    @Test
+    fun `skipInitialInternetCheck bypasses 204 check and immediately loads portal`() = runTest(testDispatcher) {
+        preferencesManager.skipInitialInternetCheck = true
+        var check204Called = false
+        var fetchPageCalled = false
+
+        val fakeClient = object : PortalClient() {
+            override suspend fun check204Connectivity(connectivityUrl: String): ConnectivityResult {
+                check204Called = true
+                return ConnectivityResult.AlreadyConnected
+            }
+
+            override suspend fun fetchLoginPage(portalUrl: String): com.mgeni.autologin.data.PageFetchResult {
+                fetchPageCalled = true
+                return com.mgeni.autologin.data.PageFetchResult.Success(
+                    timeTag = "956629188",
+                    actionUrl = "http://10.10.10.10/login.html",
+                    redirectUrl = ""
+                )
+            }
+        }
+
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        assertTrue("204 check should NOT have been called when skipInitialInternetCheck is true", !check204Called)
+        assertTrue("fetchLoginPage should have been called directly", fetchPageCalled)
+        assertTrue("Expected LoginForm, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.LoginForm)
+    }
+
+    @Test
+    fun `openAbout and dismissAbout correctly transition and restore uiState`() = runTest(testDispatcher) {
+        val fakeClient = FakePortalClient(ConnectivityResult.AlreadyConnected)
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value is MainUiState.AlreadyConnected)
+
+        viewModel.openAbout()
+        val aboutState = viewModel.uiState.value
+        assertTrue("Expected About state, got $aboutState", aboutState is MainUiState.About)
+        assertTrue((aboutState as MainUiState.About).previousState is MainUiState.AlreadyConnected)
+
+        viewModel.dismissAbout()
+        assertTrue("Expected to return to AlreadyConnected, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.AlreadyConnected)
+    }
 }

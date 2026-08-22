@@ -2,6 +2,7 @@ package com.mgeni.autologin.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.Web
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,6 +32,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -42,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -58,19 +63,21 @@ import com.mgeni.autologin.ui.theme.WarningContainerLight
 
 /**
  * Screen 8: Advanced Settings Screen
- * Allows customizing captive portal URL with safety guidance and URL validation.
+ * Allows customizing captive portal URL, skipping initial internet check, and displaying developer info.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdvancedSettingsScreen(
     currentPortalUrl: String,
+    initialSkipInitialCheck: Boolean = false,
     errorMessage: String? = null,
-    onSaveClick: (newUrl: String) -> Unit,
+    onSaveClick: (newUrl: String, skipInitialCheck: Boolean) -> Unit,
     onResetToDefaultClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var portalUrl by remember(currentPortalUrl) { mutableStateOf(currentPortalUrl) }
+    var skipInitialCheck by remember(initialSkipInitialCheck) { mutableStateOf(initialSkipInitialCheck) }
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
 
@@ -167,6 +174,7 @@ fun AdvancedSettingsScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
+                // Portal URL Field
                 Text(
                     text = "Portal URL",
                     style = MaterialTheme.typography.titleMedium,
@@ -198,7 +206,7 @@ fun AdvancedSettingsScreen(
                     keyboardActions = KeyboardActions(
                         onDone = {
                             focusManager.clearFocus()
-                            onSaveClick(portalUrl)
+                            onSaveClick(portalUrl, skipInitialCheck)
                         }
                     ),
                     shape = RoundedCornerShape(12.dp),
@@ -209,13 +217,60 @@ fun AdvancedSettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
                     text = "Default: ${PreferencesManager.DEFAULT_PORTAL_URL}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Skip Initial Internet Check Option
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                        .clickable { skipInitialCheck = !skipInitialCheck }
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Speed,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Skip initial internet check",
+                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = "Do not check for internet on startup. Directly open the portal or sign in immediately.",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Switch(
+                            checked = skipInitialCheck,
+                            onCheckedChange = { skipInitialCheck = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                }
             }
 
             Column(
@@ -227,7 +282,7 @@ fun AdvancedSettingsScreen(
                     text = "Save",
                     onClick = {
                         focusManager.clearFocus()
-                        onSaveClick(portalUrl)
+                        onSaveClick(portalUrl, skipInitialCheck)
                     }
                 )
 

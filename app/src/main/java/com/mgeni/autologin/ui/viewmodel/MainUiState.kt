@@ -41,8 +41,14 @@ sealed interface MainUiState {
     // 8. Advanced Settings screen
     data class AdvancedSettings(
         val portalUrl: String,
+        val skipInitialInternetCheck: Boolean = false,
         val isDefault: Boolean,
         val errorMessage: String? = null,
+        val previousState: MainUiState
+    ) : MainUiState
+
+    // 9. Dedicated About screen
+    data class About(
         val previousState: MainUiState
     ) : MainUiState
 }

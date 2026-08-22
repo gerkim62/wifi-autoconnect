@@ -20,6 +20,7 @@ open class PreferencesManager(context: Context? = null) {
         private const val KEY_PASSWORD = "password"
         private const val KEY_PORTAL_URL = "portal_url"
         private const val KEY_REMEMBER_ME = "remember_me"
+        private const val KEY_SKIP_INITIAL_CHECK = "skip_initial_check"
     }
 
     var username: String
@@ -50,6 +51,14 @@ open class PreferencesManager(context: Context? = null) {
         set(value) {
             prefs?.edit()?.putBoolean(KEY_REMEMBER_ME, value)?.apply()
             memoryStore[KEY_REMEMBER_ME] = value
+        }
+
+    var skipInitialInternetCheck: Boolean
+        get() = prefs?.getBoolean(KEY_SKIP_INITIAL_CHECK, false)
+            ?: (memoryStore[KEY_SKIP_INITIAL_CHECK] as? Boolean ?: false)
+        set(value) {
+            prefs?.edit()?.putBoolean(KEY_SKIP_INITIAL_CHECK, value)?.apply()
+            memoryStore[KEY_SKIP_INITIAL_CHECK] = value
         }
 
     fun hasSavedCredentials(): Boolean {

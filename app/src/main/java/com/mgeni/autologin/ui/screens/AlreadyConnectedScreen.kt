@@ -1,7 +1,5 @@
 package com.mgeni.autologin.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -9,7 +7,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,68 +20,86 @@ import androidx.compose.ui.unit.dp
 import com.mgeni.autologin.data.NetworkState
 import com.mgeni.autologin.ui.components.MobileDataWarningBanner
 import com.mgeni.autologin.ui.components.PrimaryActionButton
+import com.mgeni.autologin.ui.components.PullToRefreshLayout
 import com.mgeni.autologin.ui.components.SuccessStatusIcon
+import com.mgeni.autologin.ui.components.TopBarActions
 
 /**
  * Screen 2: Already Connected Screen
- * Shown when the 204 check returns HTTP 204 (internet is already working).
+ * Features top bar actions (Gear + Info), pull-to-refresh connectivity check, and clean Close button.
  */
 @Composable
 fun AlreadyConnectedScreen(
     networkState: NetworkState,
     onCloseClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onAboutClick: () -> Unit,
+    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    Box(
+    Scaffold(
+        topBar = {
+            TopBarActions(
+                onSettingsClick = onSettingsClick,
+                onAboutClick = onAboutClick
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(24.dp)
-    ) {
-        Column(
+    ) { innerPadding ->
+        PullToRefreshLayout(
+            onRefresh = onRefresh,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(innerPadding)
         ) {
-            MobileDataWarningBanner(networkState = networkState)
-
-            Box(
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                MobileDataWarningBanner(networkState = networkState)
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .fillMaxWidth()
+                        .padding(vertical = 48.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    SuccessStatusIcon()
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    ) {
+                        SuccessStatusIcon()
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                    Text(
-                        text = "Already connected",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center
-                    )
+                        Text(
+                            text = "Already connected",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            textAlign = TextAlign.Center
+                        )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    Text(
-                        text = "Your internet is working. No login needed.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
+                        Text(
+                            text = "Your internet is working. No login needed.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
-            }
 
-            PrimaryActionButton(
-                text = "Close",
-                onClick = onCloseClick
-            )
+                PrimaryActionButton(
+                    text = "Close",
+                    onClick = onCloseClick
+                )
+            }
         }
     }
 }

@@ -91,6 +91,13 @@ class MainViewModel(
             _uiState.value = MainUiState.CheckingConnection(isTakingLong = false)
             networkMonitor.updateNetworkStates()
 
+            if (preferencesManager.skipInitialInternetCheck) {
+                // Bypass 204 internet check and directly load the captive portal page
+                keepCheckingScreenVisible(checkingStartedAt)
+                proceedToCaptivePortal()
+                return@launch
+            }
+
             val slowNoticeJob = launch {
                 delay(SLOW_OPERATION_NOTICE_MILLIS)
                 if (_uiState.value is MainUiState.CheckingConnection) {
@@ -345,8 +352,10 @@ class MainViewModel(
         val currentState = _uiState.value
         val currentUrl = preferencesManager.portalUrl
         val isDefault = currentUrl == PreferencesManager.DEFAULT_PORTAL_URL
+        val skipInitial = preferencesManager.skipInitialInternetCheck
         _uiState.value = MainUiState.AdvancedSettings(
             portalUrl = currentUrl,
+            skipInitialInternetCheck = skipInitial,
             isDefault = isDefault,
             errorMessage = null,
             previousState = currentState
@@ -354,9 +363,9 @@ class MainViewModel(
     }
 
     /**
-     * Validates and saves customized Portal URL in Advanced Settings, then triggers fresh check.
+     * Validates and saves customized Portal URL and preferences in Advanced Settings, then triggers fresh check.
      */
-    fun saveAdvancedSettings(newUrl: String) {
+    fun saveAdvancedSettings(newUrl: String, skipInitialCheck: Boolean = false) {
         val cleanedUrl = newUrl.trim()
         val parsed = cleanedUrl.toHttpUrlOrNull()
 
@@ -365,6 +374,7 @@ class MainViewModel(
             if (currentSettings != null) {
                 _uiState.value = currentSettings.copy(
                     portalUrl = cleanedUrl,
+                    skipInitialInternetCheck = skipInitialCheck,
                     errorMessage = "Please enter a valid URL starting with http:// or https://"
                 )
             }
@@ -372,14 +382,16 @@ class MainViewModel(
         }
 
         preferencesManager.portalUrl = cleanedUrl
+        preferencesManager.skipInitialInternetCheck = skipInitialCheck
         startConnectionCheck()
     }
 
     /**
-     * Resets Portal URL to default and triggers fresh check.
+     * Resets Portal URL and preferences to default and triggers fresh check.
      */
     fun resetAdvancedSettingsToDefault() {
         preferencesManager.resetPortalUrl()
+        preferencesManager.skipInitialInternetCheck = false
         startConnectionCheck()
     }
 
@@ -388,6 +400,23 @@ class MainViewModel(
      */
     fun dismissAdvancedSettings() {
         val previous = (_uiState.value as? MainUiState.AdvancedSettings)?.previousState
+            ?: MainUiState.CheckingConnection()
+        _uiState.value = previous
+    }
+
+    /**
+     * Opens dedicated About screen.
+     */
+    fun openAbout() {
+        val currentState = _uiState.value
+        _uiState.value = MainUiState.About(previousState = currentState)
+    }
+
+    /**
+     * Returns from About screen.
+     */
+    fun dismissAbout() {
+        val previous = (_uiState.value as? MainUiState.About)?.previousState
             ?: MainUiState.CheckingConnection()
         _uiState.value = previous
     }

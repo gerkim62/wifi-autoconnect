@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
+import com.mgeni.autologin.ui.screens.AboutScreen
 import com.mgeni.autologin.ui.screens.AdvancedSettingsScreen
 import com.mgeni.autologin.ui.screens.AlreadyConnectedScreen
 import com.mgeni.autologin.ui.screens.ConnectingScreen
@@ -37,6 +38,7 @@ private fun MainUiState.screenOrder(): Int = when (this) {
     is MainUiState.AlreadyConnected -> 5
     is MainUiState.Success -> 5
     is MainUiState.AdvancedSettings -> 6
+    is MainUiState.About -> 7
 }
 
 @Composable
@@ -79,14 +81,19 @@ fun MgeniApp(
         when (state) {
             is MainUiState.CheckingConnection -> {
                 SplashScreen(
-                    isTakingLong = state.isTakingLong
+                    isTakingLong = state.isTakingLong,
+                    onSettingsClick = { viewModel.openAdvancedSettings() },
+                    onAboutClick = { viewModel.openAbout() }
                 )
             }
 
             is MainUiState.AlreadyConnected -> {
                 AlreadyConnectedScreen(
                     networkState = networkState,
-                    onCloseClick = { (context as? Activity)?.finish() }
+                    onCloseClick = { (context as? Activity)?.finish() },
+                    onSettingsClick = { viewModel.openAdvancedSettings() },
+                    onAboutClick = { viewModel.openAbout() },
+                    onRefresh = { viewModel.startConnectionCheck() }
                 )
             }
 
@@ -95,7 +102,9 @@ fun MgeniApp(
                     errorMessage = state.errorMessage,
                     networkState = networkState,
                     onRetryClick = { viewModel.startConnectionCheck() },
-                    onAdvancedSettingsClick = { viewModel.openAdvancedSettings() }
+                    onSettingsClick = { viewModel.openAdvancedSettings() },
+                    onAboutClick = { viewModel.openAbout() },
+                    onRefresh = { viewModel.startConnectionCheck() }
                 )
             }
 
@@ -109,21 +118,28 @@ fun MgeniApp(
                     onConnectClick = { username, password, rememberMe ->
                         viewModel.submitLoginForm(username, password, rememberMe)
                     },
-                    onAdvancedSettingsClick = { viewModel.openAdvancedSettings() }
+                    onSettingsClick = { viewModel.openAdvancedSettings() },
+                    onAboutClick = { viewModel.openAbout() },
+                    onRefresh = { viewModel.startConnectionCheck() }
                 )
             }
 
             is MainUiState.Connecting -> {
                 ConnectingScreen(
                     statusMessage = state.statusMessage,
-                    isTakingLong = state.isTakingLong
+                    isTakingLong = state.isTakingLong,
+                    onSettingsClick = { viewModel.openAdvancedSettings() },
+                    onAboutClick = { viewModel.openAbout() }
                 )
             }
 
             is MainUiState.Success -> {
                 SuccessScreen(
                     networkState = networkState,
-                    onCloseClick = { (context as? Activity)?.finish() }
+                    onCloseClick = { (context as? Activity)?.finish() },
+                    onSettingsClick = { viewModel.openAdvancedSettings() },
+                    onAboutClick = { viewModel.openAbout() },
+                    onRefresh = { viewModel.startConnectionCheck() }
                 )
             }
 
@@ -137,7 +153,10 @@ fun MgeniApp(
                     },
                     onEditCredentialsClick = { username ->
                         viewModel.editCredentials(username)
-                    }
+                    },
+                    onSettingsClick = { viewModel.openAdvancedSettings() },
+                    onAboutClick = { viewModel.openAbout() },
+                    onRefresh = { viewModel.startConnectionCheck() }
                 )
             }
 
@@ -148,15 +167,28 @@ fun MgeniApp(
 
                 AdvancedSettingsScreen(
                     currentPortalUrl = state.portalUrl,
+                    initialSkipInitialCheck = state.skipInitialInternetCheck,
                     errorMessage = state.errorMessage,
-                    onSaveClick = { newUrl ->
-                        viewModel.saveAdvancedSettings(newUrl)
+                    onSaveClick = { newUrl, skipInitialCheck ->
+                        viewModel.saveAdvancedSettings(newUrl, skipInitialCheck)
                     },
                     onResetToDefaultClick = {
                         viewModel.resetAdvancedSettingsToDefault()
                     },
                     onBackClick = {
                         viewModel.dismissAdvancedSettings()
+                    }
+                )
+            }
+
+            is MainUiState.About -> {
+                BackHandler {
+                    viewModel.dismissAbout()
+                }
+
+                AboutScreen(
+                    onBackClick = {
+                        viewModel.dismissAbout()
                     }
                 )
             }
