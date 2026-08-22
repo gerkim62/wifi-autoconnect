@@ -76,6 +76,23 @@ open class NetworkMonitor(context: Context? = null) {
         }
     }
 
+    private val defaultNetworkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            publishNetworkStates()
+        }
+
+        override fun onLost(network: Network) {
+            publishNetworkStates()
+        }
+
+        override fun onCapabilitiesChanged(
+            network: Network,
+            networkCapabilities: NetworkCapabilities
+        ) {
+            publishNetworkStates()
+        }
+    }
+
     init {
         updateNetworkStates()
         register()
@@ -85,6 +102,7 @@ open class NetworkMonitor(context: Context? = null) {
         try {
             val request = NetworkRequest.Builder().build()
             connectivityManager?.registerNetworkCallback(request, networkCallback)
+            connectivityManager?.registerDefaultNetworkCallback(defaultNetworkCallback)
         } catch (_: Exception) {
             // Ignore if restricted or unavailable
         }
@@ -93,6 +111,7 @@ open class NetworkMonitor(context: Context? = null) {
     fun unregister() {
         try {
             connectivityManager?.unregisterNetworkCallback(networkCallback)
+            connectivityManager?.unregisterNetworkCallback(defaultNetworkCallback)
         } catch (_: Exception) {
             // Ignore unregister errors on destroy
         }
@@ -127,6 +146,10 @@ open class NetworkMonitor(context: Context? = null) {
     }
 
     private fun publishNetworkStates() {
+        val cm = connectivityManager
+        val activeNet = cm?.activeNetwork
+        val activeCaps = activeNet?.let { cm.getNetworkCapabilities(it) }
+
         val wifiNetworks = capabilitiesByNetwork.filter { (_, capabilities) ->
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
@@ -139,6 +162,9 @@ open class NetworkMonitor(context: Context? = null) {
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
         }
 
+        // Only treat cellular as actively competing if Android is currently routing traffic over cellular
+        val isCellularActiveRoute = activeCaps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
+
         if (wifiNetworks != lastWifiNetworks) {
             lastWifiNetworks = wifiNetworks.toSet()
             _wifiChangeCount.value += 1L
@@ -147,7 +173,7 @@ open class NetworkMonitor(context: Context? = null) {
         _isCellularActive.value = hasCellular
         _isWifiActive.value = hasWifi
         _networkState.value = when {
-            hasWifi && hasCellular -> NetworkState.BothWifiAndCellular
+            hasWifi && hasCellular && isCellularActiveRoute -> NetworkState.BothWifiAndCellular
             hasWifi -> NetworkState.OnlyWifi
             hasCellular -> NetworkState.OnlyCellular
             else -> NetworkState.Offline
