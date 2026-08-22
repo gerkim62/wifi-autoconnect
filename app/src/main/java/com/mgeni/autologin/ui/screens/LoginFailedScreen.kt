@@ -112,7 +112,7 @@ fun LoginFailedScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp)
+                        .padding(bottom = 28.dp)
                 ) {
                     PrimaryActionButton(
                         text = "Try again",

@@ -38,6 +38,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,17 +85,33 @@ fun LoginScreen(
     var username by remember(initialUsername) { mutableStateOf(initialUsername) }
     var password by remember(initialPassword) { mutableStateOf(initialPassword) }
     var rememberMe by remember(initialRememberMe) { mutableStateOf(initialRememberMe) }
+    var usernameError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
     var passwordVisible by remember { mutableStateOf(false) }
     var isSubmitting by remember { mutableStateOf(false) }
+
+    LaunchedEffect(errorMessage) {
+        isSubmitting = false
+    }
 
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
 
     val triggerSubmit = {
-        if (!isSubmitting) {
+        var hasError = false
+        if (username.trim().isBlank()) {
+            usernameError = "Please enter your username"
+            hasError = true
+        }
+        if (password.isBlank()) {
+            passwordError = "Please enter your password"
+            hasError = true
+        }
+
+        if (!hasError && !isSubmitting) {
             isSubmitting = true
             focusManager.clearFocus()
-            onConnectClick(username, password, rememberMe)
+            onConnectClick(username.trim(), password, rememberMe)
         }
     }
 
@@ -192,13 +209,20 @@ fun LoginScreen(
                     // Username Input
                     OutlinedTextField(
                         value = username,
-                        onValueChange = { username = it },
+                        onValueChange = {
+                            username = it
+                            if (usernameError != null) usernameError = null
+                        },
                         label = { Text("Username") },
+                        isError = usernameError != null,
+                        supportingText = if (usernameError != null) {
+                            { Text(text = usernameError!!, color = MaterialTheme.colorScheme.error) }
+                        } else null,
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = if (usernameError != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                             )
                         },
                         singleLine = true,
@@ -223,13 +247,20 @@ fun LoginScreen(
                     // Password Input
                     OutlinedTextField(
                         value = password,
-                        onValueChange = { password = it },
+                        onValueChange = {
+                            password = it
+                            if (passwordError != null) passwordError = null
+                        },
                         label = { Text("Password") },
+                        isError = passwordError != null,
+                        supportingText = if (passwordError != null) {
+                            { Text(text = passwordError!!, color = MaterialTheme.colorScheme.error) }
+                        } else null,
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Lock,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = if (passwordError != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                             )
                         },
                         trailingIcon = {
@@ -292,7 +323,9 @@ fun LoginScreen(
                 // Action button at bottom
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 28.dp)
                 ) {
                     PrimaryActionButton(
                         text = "Connect",

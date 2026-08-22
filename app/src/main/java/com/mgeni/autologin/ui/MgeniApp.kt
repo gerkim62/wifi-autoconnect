@@ -54,12 +54,16 @@ fun MgeniApp(
     AnimatedContent(
         targetState = uiState,
         transitionSpec = {
+            val isSameScreenType = initialState::class == targetState::class
             val isCheckingOrConnecting = targetState is MainUiState.CheckingConnection ||
                 initialState is MainUiState.CheckingConnection ||
                 targetState is MainUiState.Connecting ||
                 initialState is MainUiState.Connecting
 
-            if (isCheckingOrConnecting) {
+            if (isSameScreenType) {
+                androidx.compose.animation.EnterTransition.None
+                    .togetherWith(androidx.compose.animation.ExitTransition.None)
+            } else if (isCheckingOrConnecting) {
                 fadeIn(animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing))
                     .togetherWith(fadeOut(animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)))
             } else {

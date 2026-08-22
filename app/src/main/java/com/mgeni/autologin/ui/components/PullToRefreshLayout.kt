@@ -1,8 +1,5 @@
 package com.mgeni.autologin.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -16,8 +13,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 /**
  * Reusable Material 3 pull-to-refresh wrapper.
- * The pull indicator is completely invisible and unrendered when idle (verticalOffset == 0 and not refreshing),
- * avoiding any top dot/pill artifacts.
+ * Directly attaches PullToRefreshContainer at Alignment.TopCenter when active,
+ * ensuring the spinner originates strictly at the top of the screen and is completely hidden when idle.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,14 +37,10 @@ fun PullToRefreshLayout(
     ) {
         content()
 
-        AnimatedVisibility(
-            visible = pullRefreshState.verticalOffset > 0f || pullRefreshState.isRefreshing,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.TopCenter)
-        ) {
+        if (pullRefreshState.verticalOffset > 0f || pullRefreshState.isRefreshing) {
             PullToRefreshContainer(
-                state = pullRefreshState
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter)
             )
         }
     }
