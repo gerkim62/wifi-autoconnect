@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material.icons.outlined.RestartAlt
+import com.mgeni.autologin.BuildConfig
 import com.mgeni.autologin.data.PreferencesManager
 import com.mgeni.autologin.ui.components.ConfirmationDialog
 import com.mgeni.autologin.ui.components.PrimaryActionButton
@@ -354,7 +355,8 @@ fun AdvancedSettingsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 32.dp, bottom = 36.dp)
+                    .padding(top = 32.dp, bottom = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 PrimaryActionButton(
                     text = "Save",
@@ -369,6 +371,14 @@ fun AdvancedSettingsScreen(
                 SecondaryActionButton(
                     text = "Reset to default",
                     onClick = { showResetDialog = true }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "WifiAuto v${BuildConfig.VERSION_NAME}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
             }
         }

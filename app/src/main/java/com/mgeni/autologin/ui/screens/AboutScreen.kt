@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mgeni.autologin.BuildConfig
 import com.mgeni.autologin.ui.theme.EmeraldContainer
 import com.mgeni.autologin.ui.theme.EmeraldPrimary
 
@@ -130,6 +131,16 @@ fun AboutScreen(
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onBackground
             )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+                text = "v${BuildConfig.VERSION_NAME}",
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = EmeraldPrimary
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
                 text = "Automated Wi-Fi Captive Portal Sign-In",
@@ -321,7 +332,7 @@ fun AboutScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Designed & developed by Gerison",
+                text = "WifiAuto v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) • Built by Gerison",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
