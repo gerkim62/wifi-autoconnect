@@ -2,11 +2,16 @@
 
 A minimal Android utility app built with Kotlin and Jetpack Compose that automates login to the **Guest** Wi-Fi captive portal (`10.10.10.10/login.html`).
 
+## 📲 Pre-built APK Download
+
+You can grab the ready-to-install pre-signed release APK directly from the repo:
+- **[assets/WifiAuto-v1.0.0.apk](assets/WifiAuto-v1.0.0.apk)** (~1.7 MB)
+
 ---
 
 ## ⚡ Quick Start: Build APK
 
-Follow these steps immediately after cloning the repository:
+Follow these steps to build the APK yourself from source:
 
 ### 1. Prerequisites
 - **JDK 17** (e.g. OpenJDK 17, Eclipse Temurin 17, or Android Studio bundled JDK)
