@@ -218,7 +218,7 @@ fun AdvancedSettingsScreen(
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "Endpoint where the login page and authentication form reside.",
+                    text = "Endpoint where the login page and authentication form reside. Check if this portal URL is correct if you have trouble connecting to the guest Wi-Fi network.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
