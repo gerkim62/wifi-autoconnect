@@ -32,7 +32,7 @@ fun TopBarActions(
         modifier = modifier
             .statusBarsPadding()
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         contentAlignment = Alignment.CenterEnd
     ) {
         Row(

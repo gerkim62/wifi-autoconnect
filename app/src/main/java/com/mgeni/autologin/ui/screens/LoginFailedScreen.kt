@@ -1,6 +1,6 @@
 package com.mgeni.autologin.ui.screens
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -28,7 +28,7 @@ import com.mgeni.autologin.ui.components.TopBarActions
 
 /**
  * Screen 7: Login Failed Screen
- * Features top bar actions (Gear + Info), pull-to-refresh connectivity check, Try Again, and Edit credentials.
+ * Features top bar actions (Gear + Info), pull-to-refresh connectivity check, and bottom-anchored Try Again and Edit credentials.
  */
 @Composable
 fun LoginFailedScreen(
@@ -61,22 +61,30 @@ fun LoginFailedScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                MobileDataWarningBanner(networkState = networkState)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    MobileDataWarningBanner(networkState = networkState)
+                }
 
                 Box(
                     modifier = Modifier
-                        .weight(1f, fill = false)
+                        .weight(1f)
                         .fillMaxWidth()
-                        .padding(vertical = 48.dp),
+                        .padding(vertical = 24.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp)
                     ) {
                         ErrorStatusIcon()
 
@@ -102,7 +110,9 @@ fun LoginFailedScreen(
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
                 ) {
                     PrimaryActionButton(
                         text = "Try again",

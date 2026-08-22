@@ -1,5 +1,6 @@
 package com.mgeni.autologin.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -26,7 +27,7 @@ import com.mgeni.autologin.ui.components.TopBarActions
 
 /**
  * Screen 6: Success Screen
- * Features top bar actions (Gear + Info), pull-to-refresh connectivity check, and clean Close button.
+ * Features top bar actions (Gear + Info), pull-to-refresh connectivity check, and bottom-anchored Close button.
  */
 @Composable
 fun SuccessScreen(
@@ -56,22 +57,30 @@ fun SuccessScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                MobileDataWarningBanner(networkState = networkState)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    MobileDataWarningBanner(networkState = networkState)
+                }
 
                 Box(
                     modifier = Modifier
-                        .weight(1f, fill = false)
+                        .weight(1f)
                         .fillMaxWidth()
-                        .padding(vertical = 48.dp),
+                        .padding(vertical = 24.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp)
                     ) {
                         SuccessStatusIcon()
 
@@ -95,10 +104,17 @@ fun SuccessScreen(
                     }
                 }
 
-                PrimaryActionButton(
-                    text = "Close",
-                    onClick = onCloseClick
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                ) {
+                    PrimaryActionButton(
+                        text = "Close",
+                        onClick = onCloseClick
+                    )
+                }
             }
         }
     }

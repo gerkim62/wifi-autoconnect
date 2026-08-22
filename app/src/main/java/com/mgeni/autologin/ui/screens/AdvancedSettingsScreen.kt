@@ -52,9 +52,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.outlined.PersonOff
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.outlined.RestartAlt
 import com.mgeni.autologin.data.PreferencesManager
+import com.mgeni.autologin.ui.components.ConfirmationDialog
 import com.mgeni.autologin.ui.components.PrimaryActionButton
 import com.mgeni.autologin.ui.components.SecondaryActionButton
 import com.mgeni.autologin.ui.theme.ErrorContainerDark
@@ -84,50 +84,37 @@ fun AdvancedSettingsScreen(
     var portalUrl by remember(currentPortalUrl) { mutableStateOf(currentPortalUrl) }
     var skipInitialCheck by remember(initialSkipInitialCheck) { mutableStateOf(initialSkipInitialCheck) }
     var showClearCredsDialog by remember { mutableStateOf(false) }
+    var showResetDialog by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
 
     if (showClearCredsDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearCredsDialog = false },
-            icon = {
-                Icon(
-                    imageVector = Icons.Outlined.PersonOff,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
-                )
+        ConfirmationDialog(
+            title = "Clear saved credentials?",
+            message = "This will remove your stored username and password from this device. You will need to re-enter them on your next sign-in.",
+            confirmButtonText = "Clear",
+            isDestructive = true,
+            icon = Icons.Outlined.PersonOff,
+            onConfirm = {
+                showClearCredsDialog = false
+                onClearCredentialsClick()
             },
-            title = {
-                Text(
-                    text = "Clear saved credentials?",
-                    style = MaterialTheme.typography.titleLarge
-                )
+            onDismiss = { showClearCredsDialog = false }
+        )
+    }
+
+    if (showResetDialog) {
+        ConfirmationDialog(
+            title = "Reset to default?",
+            message = "This will restore the portal URL to http://10.10.10.10/login.html and re-enable initial internet checks.",
+            confirmButtonText = "Reset",
+            isDestructive = false,
+            icon = Icons.Outlined.RestartAlt,
+            onConfirm = {
+                showResetDialog = false
+                onResetToDefaultClick()
             },
-            text = {
-                Text(
-                    text = "This will remove your stored username and password from this device. You will need to re-enter them on your next sign-in.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showClearCredsDialog = false
-                        onClearCredentialsClick()
-                    }
-                ) {
-                    Text(
-                        text = "Clear",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearCredsDialog = false }) {
-                    Text(text = "Cancel", style = MaterialTheme.typography.labelLarge)
-                }
-            }
+            onDismiss = { showResetDialog = false }
         )
     }
 
@@ -380,7 +367,7 @@ fun AdvancedSettingsScreen(
 
                 SecondaryActionButton(
                     text = "Reset to default",
-                    onClick = onResetToDefaultClick
+                    onClick = { showResetDialog = true }
                 )
             }
         }

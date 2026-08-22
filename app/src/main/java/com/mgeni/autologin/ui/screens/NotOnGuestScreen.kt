@@ -1,5 +1,6 @@
 package com.mgeni.autologin.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -30,7 +31,7 @@ import com.mgeni.autologin.ui.components.WarningStatusIcon
 
 /**
  * Screen 3: Wi-Fi Disconnected / Unreachable Screen
- * Features top bar actions (Gear + Info), pull-to-refresh connectivity check, and Retry button.
+ * Features top bar actions (Gear + Info), pull-to-refresh connectivity check, and bottom-anchored Retry button.
  */
 @Composable
 fun NotOnGuestScreen(
@@ -57,8 +58,10 @@ fun NotOnGuestScreen(
         isOnlyCellular -> "You are using mobile data, but WifiAuto requires Wi-Fi. Connect to the Guest Wi-Fi network to sign in."
         isOffline -> "Wi-Fi is disconnected. Please turn on Wi-Fi and connect to the Guest network, then try again."
         isUnsupported -> errorMessage
-        else -> errorMessage.ifBlank {
-            "Make sure you're connected to the Wi-Fi network, then try again."
+        else -> if (errorMessage.isNotBlank() && !errorMessage.contains("Make sure you're connected", ignoreCase = true)) {
+            errorMessage
+        } else {
+            "Make sure you are connected to the Guest Wi-Fi network (not a different Wi-Fi or private hotspot), then try again."
         }
     }
 
@@ -81,25 +84,33 @@ fun NotOnGuestScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Show ambient advice banner when both Wi-Fi and Cellular are active
-                if (networkState == NetworkState.BothWifiAndCellular) {
-                    MobileDataWarningBanner(networkState = networkState)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (networkState == NetworkState.BothWifiAndCellular) {
+                        MobileDataWarningBanner(networkState = networkState)
+                    }
                 }
 
                 Box(
                     modifier = Modifier
-                        .weight(1f, fill = false)
+                        .weight(1f)
                         .fillMaxWidth()
-                        .padding(vertical = 48.dp),
+                        .padding(vertical = 24.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp)
                     ) {
                         when {
                             isOnlyCellular -> WarningStatusIcon(icon = Icons.Outlined.SignalCellularAlt)
@@ -127,10 +138,17 @@ fun NotOnGuestScreen(
                     }
                 }
 
-                PrimaryActionButton(
-                    text = "Retry",
-                    onClick = onRetryClick
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                ) {
+                    PrimaryActionButton(
+                        text = "Retry",
+                        onClick = onRetryClick
+                    )
+                }
             }
         }
     }
