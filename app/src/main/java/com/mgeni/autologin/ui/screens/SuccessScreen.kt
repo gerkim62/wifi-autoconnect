@@ -25,7 +25,7 @@ import com.mgeni.autologin.ui.components.TopBarActions
 /**
  * Screen 6: Success Screen
  * Features top bar actions (Gear + Info), pull-to-refresh connectivity check,
- * upper-half optical status card positioning, and bottom-anchored Close button.
+ * elevated status card positioning, and bottom action button with generous clearance.
  */
 @Composable
 fun SuccessScreen(
@@ -65,8 +65,8 @@ fun SuccessScreen(
                     )
                 }
 
-                // Top space (approx. 20-25% height) to position content gracefully in the upper half
-                Spacer(modifier = Modifier.weight(0.35f))
+                // Higher top positioning (~20% top bias)
+                Spacer(modifier = Modifier.weight(0.20f))
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -95,15 +95,15 @@ fun SuccessScreen(
                     )
                 }
 
-                // Bottom space (approx. 40-45% height) to ensure content clearly sits in upper half
-                Spacer(modifier = Modifier.weight(0.65f))
+                // Bottom spacer balancing the elevated position
+                Spacer(modifier = Modifier.weight(0.80f))
 
                 PrimaryActionButton(
                     text = "Close",
                     onClick = onCloseClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 28.dp)
+                        .padding(bottom = 36.dp)
                 )
             }
         }

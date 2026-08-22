@@ -353,7 +353,7 @@ fun AdvancedSettingsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 32.dp, bottom = 28.dp)
+                    .padding(top = 32.dp, bottom = 36.dp)
             ) {
                 PrimaryActionButton(
                     text = "Save",

@@ -29,7 +29,7 @@ import com.mgeni.autologin.ui.components.WarningStatusIcon
 /**
  * Screen 3: Wi-Fi Disconnected / Unreachable Screen
  * Features top bar actions (Gear + Info), pull-to-refresh connectivity check,
- * upper-half optical status card positioning, and bottom-anchored Retry button.
+ * elevated status card positioning, and bottom action button with generous clearance.
  */
 @Composable
 fun NotOnGuestScreen(
@@ -92,8 +92,8 @@ fun NotOnGuestScreen(
                     )
                 }
 
-                // Top space (approx. 20-25% height) to position content gracefully in the upper half
-                Spacer(modifier = Modifier.weight(0.35f))
+                // Higher top positioning (~20% top bias)
+                Spacer(modifier = Modifier.weight(0.20f))
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -126,15 +126,15 @@ fun NotOnGuestScreen(
                     )
                 }
 
-                // Bottom space (approx. 40-45% height) to ensure content clearly sits in upper half
-                Spacer(modifier = Modifier.weight(0.65f))
+                // Bottom spacer balancing the elevated position
+                Spacer(modifier = Modifier.weight(0.80f))
 
                 PrimaryActionButton(
                     text = "Retry",
                     onClick = onRetryClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 28.dp)
+                        .padding(bottom = 36.dp)
                 )
             }
         }

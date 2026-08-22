@@ -325,7 +325,7 @@ fun LoginScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 28.dp)
+                        .padding(bottom = 36.dp)
                 ) {
                     PrimaryActionButton(
                         text = "Connect",

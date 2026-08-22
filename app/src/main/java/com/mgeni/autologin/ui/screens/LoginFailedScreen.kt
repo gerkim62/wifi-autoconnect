@@ -26,7 +26,7 @@ import com.mgeni.autologin.ui.components.TopBarActions
 /**
  * Screen 7: Login Failed Screen
  * Features top bar actions (Gear + Info), pull-to-refresh connectivity check,
- * upper-half optical status card positioning, and bottom-anchored Try Again and Edit credentials.
+ * elevated status card positioning, and bottom action buttons with generous clearance.
  */
 @Composable
 fun LoginFailedScreen(
@@ -69,8 +69,8 @@ fun LoginFailedScreen(
                     )
                 }
 
-                // Top space (approx. 20-25% height) to position content gracefully in the upper half
-                Spacer(modifier = Modifier.weight(0.35f))
+                // Higher top positioning (~20% top bias)
+                Spacer(modifier = Modifier.weight(0.20f))
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -99,14 +99,14 @@ fun LoginFailedScreen(
                     )
                 }
 
-                // Bottom space (approx. 40-45% height) to ensure content clearly sits in upper half
-                Spacer(modifier = Modifier.weight(0.65f))
+                // Bottom spacer balancing the elevated position
+                Spacer(modifier = Modifier.weight(0.80f))
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 28.dp)
+                        .padding(bottom = 36.dp)
                 ) {
                     PrimaryActionButton(
                         text = "Try again",
