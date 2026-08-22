@@ -1,5 +1,6 @@
 package com.mgeni.autologin.ui.viewmodel
 
+import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mgeni.autologin.data.ConnectivityResult
@@ -10,6 +11,7 @@ import com.mgeni.autologin.data.PageFetchResult
 import com.mgeni.autologin.data.PortalClient
 import com.mgeni.autologin.data.PreferencesManager
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,6 +26,11 @@ class MainViewModel(
     private val portalClient: PortalClient = PortalClient(),
     private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
+
+    private companion object {
+        const val MINIMUM_CHECKING_DISPLAY_MILLIS = 300L
+        const val SLOW_OPERATION_NOTICE_MILLIS = 5_000L
+    }
 
     private val _uiState = MutableStateFlow<MainUiState>(MainUiState.CheckingConnection())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
@@ -48,27 +55,35 @@ class MainViewModel(
      */
     fun startConnectionCheck() {
         viewModelScope.launch {
+            val checkingStartedAt = SystemClock.elapsedRealtime()
             _uiState.value = MainUiState.CheckingConnection(isTakingLong = false)
             networkMonitor.updateNetworkStates()
 
             val slowNoticeJob = launch {
-                delay(5000)
+                delay(SLOW_OPERATION_NOTICE_MILLIS)
                 if (_uiState.value is MainUiState.CheckingConnection) {
                     _uiState.value = MainUiState.CheckingConnection(isTakingLong = true)
                 }
             }
 
-            when (val result = portalClient.check204Connectivity()) {
+            val result = portalClient.check204Connectivity()
+            slowNoticeJob.cancel()
+
+            when (result) {
                 is ConnectivityResult.AlreadyConnected -> {
-                    slowNoticeJob.cancel()
+                    keepCheckingScreenVisible(checkingStartedAt)
                     _uiState.value = MainUiState.AlreadyConnected
                 }
                 is ConnectivityResult.CaptiveDetected -> {
-                    slowNoticeJob.cancel()
-                    proceedToCaptivePortal(result.portalRedirectUrl)
+                    // Start useful portal work right away; only the visible screen change is gated.
+                    val pageResult = async {
+                        fetchCaptivePortalLoginPage(result.portalRedirectUrl)
+                    }
+                    keepCheckingScreenVisible(checkingStartedAt)
+                    handlePortalPageResult(pageResult.await())
                 }
                 is ConnectivityResult.Unreachable -> {
-                    slowNoticeJob.cancel()
+                    keepCheckingScreenVisible(checkingStartedAt)
                     _uiState.value = MainUiState.NotOnGuestNetwork(
                         errorMessage = "Make sure you're connected to the Wi-Fi network, then try again."
                     )
@@ -81,13 +96,21 @@ class MainViewModel(
      * Step 2: Fetch the captive portal login page and handle auto-login or show login form.
      */
     private suspend fun proceedToCaptivePortal(redirectHint: String? = null) {
+        handlePortalPageResult(fetchCaptivePortalLoginPage(redirectHint))
+    }
+
+    private suspend fun fetchCaptivePortalLoginPage(redirectHint: String? = null): PageFetchResult {
         val portalUrl = if (!redirectHint.isNullOrBlank() && redirectHint.startsWith("http")) {
             redirectHint
         } else {
             preferencesManager.portalUrl
         }
 
-        when (val pageResult = portalClient.fetchLoginPage(portalUrl)) {
+        return portalClient.fetchLoginPage(portalUrl)
+    }
+
+    private suspend fun handlePortalPageResult(pageResult: PageFetchResult) {
+        when (pageResult) {
             is PageFetchResult.Error -> {
                 _uiState.value = MainUiState.NotOnGuestNetwork(
                     errorMessage = pageResult.message
@@ -189,7 +212,7 @@ class MainViewModel(
 
         var slowJob: Job? = null
         slowJob = viewModelScope.launch {
-            delay(5000)
+            delay(SLOW_OPERATION_NOTICE_MILLIS)
             if (_uiState.value is MainUiState.Connecting) {
                 _uiState.value = (_uiState.value as MainUiState.Connecting).copy(isTakingLong = true)
             }
@@ -219,6 +242,11 @@ class MainViewModel(
                 )
             }
         }
+    }
+
+    private suspend fun keepCheckingScreenVisible(checkingStartedAt: Long) {
+        val elapsed = SystemClock.elapsedRealtime() - checkingStartedAt
+        delay((MINIMUM_CHECKING_DISPLAY_MILLIS - elapsed).coerceAtLeast(0L))
     }
 
     /**

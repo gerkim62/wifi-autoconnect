@@ -34,20 +34,26 @@ class NetworkMonitor(context: Context) {
     private val _isWifiActive = MutableStateFlow(false)
     val isWifiActive: StateFlow<Boolean> = _isWifiActive.asStateFlow()
 
+    private val capabilitiesByNetwork = mutableMapOf<Network, NetworkCapabilities>()
+
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            updateNetworkStates()
+            val capabilities = connectivityManager?.getNetworkCapabilities(network) ?: return
+            updateCapabilities(network, capabilities)
         }
 
         override fun onLost(network: Network) {
-            updateNetworkStates()
+            synchronized(capabilitiesByNetwork) {
+                capabilitiesByNetwork.remove(network)
+                publishNetworkStates()
+            }
         }
 
         override fun onCapabilitiesChanged(
             network: Network,
             networkCapabilities: NetworkCapabilities
         ) {
-            updateNetworkStates()
+            updateCapabilities(network, networkCapabilities)
         }
     }
 
@@ -58,7 +64,9 @@ class NetworkMonitor(context: Context) {
 
     private fun register() {
         try {
-            val request = NetworkRequest.Builder().build()
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
             connectivityManager?.registerNetworkCallback(request, networkCallback)
         } catch (_: Exception) {
             // Ignore if restricted or unavailable
@@ -75,38 +83,52 @@ class NetworkMonitor(context: Context) {
 
     fun updateNetworkStates() {
         val cm = connectivityManager ?: return
-        var hasCellular = false
-        var hasWifi = false
-
-        try {
-            val activeNetworks = cm.allNetworks
-            for (network in activeNetworks) {
-                val caps = cm.getNetworkCapabilities(network) ?: continue
-                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-                    hasCellular = true
-                }
-                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                    hasWifi = true
-                }
+        val snapshot = try {
+            cm.allNetworks.mapNotNull { network ->
+                cm.getNetworkCapabilities(network)?.let { network to it }
             }
         } catch (_: Exception) {
-            // Fallback to active network info
-            val activeCap = cm.getNetworkCapabilities(cm.activeNetwork)
-            if (activeCap != null) {
-                hasCellular = activeCap.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
-                hasWifi = activeCap.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-            }
+            cm.activeNetwork?.let { network ->
+                cm.getNetworkCapabilities(network)?.let { capabilities ->
+                    listOf(network to capabilities)
+                }
+            }.orEmpty()
+        }
+
+        synchronized(capabilitiesByNetwork) {
+            capabilitiesByNetwork.clear()
+            capabilitiesByNetwork.putAll(snapshot)
+            publishNetworkStates()
+        }
+    }
+
+    private fun updateCapabilities(network: Network, capabilities: NetworkCapabilities) {
+        synchronized(capabilitiesByNetwork) {
+            capabilitiesByNetwork[network] = capabilities
+            publishNetworkStates()
+        }
+    }
+
+    private fun publishNetworkStates() {
+        val hasWifi = capabilitiesByNetwork.values.any { capabilities ->
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
+        }
+        val hasCellular = capabilitiesByNetwork.values.any { capabilities ->
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
         }
 
         _isCellularActive.value = hasCellular
         _isWifiActive.value = hasWifi
-
         _networkState.value = when {
             hasWifi && hasCellular -> NetworkState.BothWifiAndCellular
-            hasWifi && !hasCellular -> NetworkState.OnlyWifi
-            !hasWifi && hasCellular -> NetworkState.OnlyCellular
+            hasWifi -> NetworkState.OnlyWifi
+            hasCellular -> NetworkState.OnlyCellular
             else -> NetworkState.Offline
         }
     }
 }
-
