@@ -51,16 +51,26 @@ fun MgeniApp(
     AnimatedContent(
         targetState = uiState,
         transitionSpec = {
-            val isForward = targetState.screenOrder() >= initialState.screenOrder()
-            val fadeSpec = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
-            val offsetSpec = tween<IntOffset>(durationMillis = 320, easing = FastOutSlowInEasing)
+            val isCheckingOrConnecting = targetState is MainUiState.CheckingConnection ||
+                initialState is MainUiState.CheckingConnection ||
+                targetState is MainUiState.Connecting ||
+                initialState is MainUiState.Connecting
 
-            if (isForward) {
-                (slideInHorizontally(animationSpec = offsetSpec) { fullWidth -> fullWidth } + fadeIn(animationSpec = fadeSpec))
-                    .togetherWith(slideOutHorizontally(animationSpec = offsetSpec) { fullWidth -> -fullWidth / 3 } + fadeOut(animationSpec = fadeSpec))
+            if (isCheckingOrConnecting) {
+                fadeIn(animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing))
+                    .togetherWith(fadeOut(animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)))
             } else {
-                (slideInHorizontally(animationSpec = offsetSpec) { fullWidth -> -fullWidth / 3 } + fadeIn(animationSpec = fadeSpec))
-                    .togetherWith(slideOutHorizontally(animationSpec = offsetSpec) { fullWidth -> fullWidth } + fadeOut(animationSpec = fadeSpec))
+                val isForward = targetState.screenOrder() >= initialState.screenOrder()
+                val fadeSpec = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
+                val offsetSpec = tween<IntOffset>(durationMillis = 320, easing = FastOutSlowInEasing)
+
+                if (isForward) {
+                    (slideInHorizontally(animationSpec = offsetSpec) { fullWidth -> fullWidth } + fadeIn(animationSpec = fadeSpec))
+                        .togetherWith(slideOutHorizontally(animationSpec = offsetSpec) { fullWidth -> -fullWidth / 3 } + fadeOut(animationSpec = fadeSpec))
+                } else {
+                    (slideInHorizontally(animationSpec = offsetSpec) { fullWidth -> -fullWidth / 3 } + fadeIn(animationSpec = fadeSpec))
+                        .togetherWith(slideOutHorizontally(animationSpec = offsetSpec) { fullWidth -> fullWidth } + fadeOut(animationSpec = fadeSpec))
+                }
             }
         },
         label = "ScreenTransition",

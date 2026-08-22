@@ -28,7 +28,7 @@ class MainViewModel(
 ) : ViewModel() {
 
     private companion object {
-        const val MINIMUM_CHECKING_DISPLAY_MILLIS = 300L
+        const val MINIMUM_CHECKING_DISPLAY_MILLIS = 400L
         const val SLOW_OPERATION_NOTICE_MILLIS = 5_000L
     }
 
