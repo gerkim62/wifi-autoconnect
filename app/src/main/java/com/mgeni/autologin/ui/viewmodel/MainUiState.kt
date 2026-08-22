@@ -42,6 +42,7 @@ sealed interface MainUiState {
     data class AdvancedSettings(
         val portalUrl: String,
         val skipInitialInternetCheck: Boolean = false,
+        val hasSavedCredentials: Boolean = false,
         val isDefault: Boolean,
         val errorMessage: String? = null,
         val previousState: MainUiState

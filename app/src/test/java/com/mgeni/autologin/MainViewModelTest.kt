@@ -188,4 +188,28 @@ class MainViewModelTest {
         viewModel.dismissAbout()
         assertTrue("Expected to return to AlreadyConnected, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.AlreadyConnected)
     }
+
+    @Test
+    fun `clearSavedCredentials removes stored credentials and updates state`() = runTest(testDispatcher) {
+        preferencesManager.saveCredentials("testuser", "testpass", remember = true)
+        assertTrue(preferencesManager.hasSavedCredentials())
+
+        val fakeClient = FakePortalClient(ConnectivityResult.AlreadyConnected)
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        viewModel.openAdvancedSettings()
+
+        val settingsState = viewModel.uiState.value as MainUiState.AdvancedSettings
+        assertTrue("Expected hasSavedCredentials to be true initially", settingsState.hasSavedCredentials)
+
+        viewModel.clearSavedCredentials()
+        assertTrue("Expected hasSavedCredentials to be false after clear", !preferencesManager.hasSavedCredentials())
+        val updatedState = viewModel.uiState.value as MainUiState.AdvancedSettings
+        assertTrue("Expected state hasSavedCredentials to be false", !updatedState.hasSavedCredentials)
+    }
 }

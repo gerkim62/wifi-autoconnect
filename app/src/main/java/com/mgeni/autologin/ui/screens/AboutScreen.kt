@@ -145,29 +145,19 @@ fun AboutScreen(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .padding(18.dp)
+                    .padding(16.dp)
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Outlined.Favorite,
-                            contentDescription = null,
-                            tint = EmeraldPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Inspiration & Story",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Outlined.Favorite,
+                        contentDescription = null,
+                        tint = EmeraldPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "WifiAuto was crafted with passion as a personal hobby and side project to make connecting to supported Wi-Fi portals smooth, reliable, and effortless.",
-                        style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp),
+                        text = "Built for fun and as a hobby.",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

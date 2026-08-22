@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
@@ -19,7 +20,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Clean top bar action header providing consistent, uncluttered access to
- * Settings (Gear) and About (Info) across all application screens.
+ * Settings (Gear) and About (Info) across all application screens with safe area status bar insets.
  */
 @Composable
 fun TopBarActions(
@@ -29,6 +30,7 @@ fun TopBarActions(
 ) {
     Box(
         modifier = modifier
+            .statusBarsPadding()
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp),
         contentAlignment = Alignment.CenterEnd

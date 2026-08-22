@@ -51,6 +51,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.outlined.PersonOff
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import com.mgeni.autologin.data.PreferencesManager
 import com.mgeni.autologin.ui.components.PrimaryActionButton
 import com.mgeni.autologin.ui.components.SecondaryActionButton
@@ -63,23 +66,70 @@ import com.mgeni.autologin.ui.theme.WarningContainerLight
 
 /**
  * Screen 8: Advanced Settings Screen
- * Allows customizing captive portal URL, skipping initial internet check, and displaying developer info.
+ * Allows customizing captive portal URL, skipping initial internet check, and clearing saved credentials.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdvancedSettingsScreen(
     currentPortalUrl: String,
     initialSkipInitialCheck: Boolean = false,
+    hasSavedCredentials: Boolean = false,
     errorMessage: String? = null,
     onSaveClick: (newUrl: String, skipInitialCheck: Boolean) -> Unit,
+    onClearCredentialsClick: () -> Unit = {},
     onResetToDefaultClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var portalUrl by remember(currentPortalUrl) { mutableStateOf(currentPortalUrl) }
     var skipInitialCheck by remember(initialSkipInitialCheck) { mutableStateOf(initialSkipInitialCheck) }
+    var showClearCredsDialog by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
+
+    if (showClearCredsDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearCredsDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.PersonOff,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = {
+                Text(
+                    text = "Clear saved credentials?",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Text(
+                    text = "This will remove your stored username and password from this device. You will need to re-enter them on your next sign-in.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearCredsDialog = false
+                        onClearCredentialsClick()
+                    }
+                ) {
+                    Text(
+                        text = "Clear",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearCredsDialog = false }) {
+                    Text(text = "Cancel", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -269,6 +319,46 @@ fun AdvancedSettingsScreen(
                                 checkedTrackColor = MaterialTheme.colorScheme.primary
                             )
                         )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Clear Credentials Card
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                        .clickable(enabled = hasSavedCredentials) { showClearCredsDialog = true }
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.PersonOff,
+                            contentDescription = null,
+                            tint = if (hasSavedCredentials) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Clear saved credentials",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontSize = 15.sp,
+                                    color = if (hasSavedCredentials) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                            )
+                            Text(
+                                text = if (hasSavedCredentials) "Remove stored username and password from this device." else "No credentials currently stored on device.",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (hasSavedCredentials) 1f else 0.5f),
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
                     }
                 }
             }

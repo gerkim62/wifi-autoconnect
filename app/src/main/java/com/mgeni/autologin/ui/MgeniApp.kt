@@ -11,6 +11,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -76,7 +77,9 @@ fun MgeniApp(
             }
         },
         label = "ScreenTransition",
-        modifier = modifier.fillMaxSize()
+        modifier = modifier
+            .fillMaxSize()
+            .navigationBarsPadding()
     ) { state ->
         when (state) {
             is MainUiState.CheckingConnection -> {
@@ -168,9 +171,13 @@ fun MgeniApp(
                 AdvancedSettingsScreen(
                     currentPortalUrl = state.portalUrl,
                     initialSkipInitialCheck = state.skipInitialInternetCheck,
+                    hasSavedCredentials = state.hasSavedCredentials,
                     errorMessage = state.errorMessage,
                     onSaveClick = { newUrl, skipInitialCheck ->
                         viewModel.saveAdvancedSettings(newUrl, skipInitialCheck)
+                    },
+                    onClearCredentialsClick = {
+                        viewModel.clearSavedCredentials()
                     },
                     onResetToDefaultClick = {
                         viewModel.resetAdvancedSettingsToDefault()

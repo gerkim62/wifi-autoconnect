@@ -62,7 +62,7 @@ open class PreferencesManager(context: Context? = null) {
         }
 
     fun hasSavedCredentials(): Boolean {
-        return rememberMe && username.isNotBlank() && password.isNotBlank()
+        return username.isNotBlank() && password.isNotBlank()
     }
 
     fun saveCredentials(user: String, pass: String, remember: Boolean) {
@@ -90,8 +90,15 @@ open class PreferencesManager(context: Context? = null) {
     }
 
     fun clearSavedCredentials() {
-        prefs?.edit()?.remove(KEY_PASSWORD)?.apply()
+        prefs?.edit()?.apply {
+            remove(KEY_USERNAME)
+            remove(KEY_PASSWORD)
+            putBoolean(KEY_REMEMBER_ME, false)
+            apply()
+        }
+        memoryStore.remove(KEY_USERNAME)
         memoryStore.remove(KEY_PASSWORD)
+        memoryStore[KEY_REMEMBER_ME] = false
     }
 
     fun resetPortalUrl() {

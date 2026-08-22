@@ -353,13 +353,26 @@ class MainViewModel(
         val currentUrl = preferencesManager.portalUrl
         val isDefault = currentUrl == PreferencesManager.DEFAULT_PORTAL_URL
         val skipInitial = preferencesManager.skipInitialInternetCheck
+        val hasSavedCreds = preferencesManager.hasSavedCredentials()
         _uiState.value = MainUiState.AdvancedSettings(
             portalUrl = currentUrl,
             skipInitialInternetCheck = skipInitial,
+            hasSavedCredentials = hasSavedCreds,
             isDefault = isDefault,
             errorMessage = null,
             previousState = currentState
         )
+    }
+
+    /**
+     * Clears stored login credentials from preferences.
+     */
+    fun clearSavedCredentials() {
+        preferencesManager.clearSavedCredentials()
+        val currentSettings = _uiState.value as? MainUiState.AdvancedSettings
+        if (currentSettings != null) {
+            _uiState.value = currentSettings.copy(hasSavedCredentials = false)
+        }
     }
 
     /**
