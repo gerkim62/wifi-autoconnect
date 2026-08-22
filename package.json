@@ -1,0 +1,13 @@
+{
+  "name": "guest-auto-portal",
+  "version": "1.0.0",
+  "description": "Captive portal mock & inspection server for WifiAuto development",
+  "main": "captive-portal/server.js",
+  "scripts": {
+    "start": "node captive-portal/server.js",
+    "portal": "node captive-portal/server.js"
+  },
+  "keywords": ["captive-portal", "android", "testing"],
+  "author": "Gerison",
+  "license": "ISC"
+}

@@ -1,6 +1,6 @@
 # Mgeni — Wi-Fi Auto-Login Android App
 
-A minimal Android utility app built with Kotlin and Jetpack Compose that automates login to the Safaricom **Guest** captive portal (`10.10.10.10/login.html`).
+A minimal Android utility app built with Kotlin and Jetpack Compose that automates login to the **Guest** Wi-Fi captive portal (`10.10.10.10/login.html`).
 
 ## Current support
 
@@ -77,3 +77,23 @@ The debug APK is created at:
 ```text
 app/build/outputs/apk/debug/app-debug.apk
 ```
+
+---
+
+## Local Captive Portal Mock & Inspection Server
+
+To test and inspect exactly what the captive portal receives from the Android app or browser:
+
+```bash
+npm start
+# or
+node captive-portal/server.js
+```
+
+### Available Endpoints & Features:
+- **Local Portal**: `http://localhost:8080/login.html`
+- **Android Emulator**: `http://10.0.2.2:8080/login.html`
+- **Wi-Fi Device**: `http://<your-local-ip>:8080/login.html`
+- **Live Web Inspector**: `http://localhost:8080/inspect` (live view of all received form payloads & headers)
+- **Reset State**: `http://localhost:8080/reset` (switches back to unauthenticated captive portal mode)
+

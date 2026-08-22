@@ -192,7 +192,7 @@ fun AboutScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Please ensure you have proper authorization and valid credentials before connecting to the network.",
+                            text = "Please ensure you have proper authorization and valid credentials before connecting to the \"guest\" Wi-Fi network.",
                             style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
