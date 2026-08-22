@@ -135,6 +135,7 @@ open class NetworkMonitor(context: Context? = null) {
         val hasWifi = wifiNetworks.isNotEmpty()
         val hasCellular = capabilitiesByNetwork.values.any { capabilities ->
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
         }
 
