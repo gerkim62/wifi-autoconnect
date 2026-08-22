@@ -72,7 +72,7 @@ class MainViewModel(
                     // Wi-Fi lost / disconnected
                     checkJob?.cancel()
                     _uiState.value = MainUiState.NotOnGuestNetwork(
-                        errorMessage = "Make sure you're connected to the Wi-Fi network, then try again."
+                        errorMessage = "Make sure you're connected to the \"guest\" Wi-Fi network, or check if the portal URL is correct in Settings."
                     )
                 } else {
                     // Wi-Fi connected or changed
@@ -137,7 +137,7 @@ class MainViewModel(
                 is ConnectivityResult.Unreachable -> {
                     keepCheckingScreenVisible(checkingStartedAt)
                     _uiState.value = MainUiState.NotOnGuestNetwork(
-                        errorMessage = "Make sure you're connected to the Wi-Fi network, then try again."
+                        errorMessage = "Make sure you're connected to the \"guest\" Wi-Fi network, or check if the portal URL is correct in Settings."
                     )
                 }
             }

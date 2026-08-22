@@ -53,13 +53,13 @@ fun NotOnGuestScreen(
     }
 
     val description = when {
-        isOnlyCellular -> "You are using mobile data, but WifiAuto requires Wi-Fi. Connect to the Guest Wi-Fi network to sign in."
-        isOffline -> "Wi-Fi is disconnected. Please turn on Wi-Fi and connect to the Guest network, then try again."
+        isOnlyCellular -> "You are using mobile data, but WifiAuto requires Wi-Fi. Connect to the \"guest\" Wi-Fi network to sign in."
+        isOffline -> "Wi-Fi is disconnected. Please turn on Wi-Fi and connect to the \"guest\" network, then try again."
         isUnsupported -> errorMessage
         else -> if (errorMessage.isNotBlank() && !errorMessage.contains("Make sure you're connected", ignoreCase = true)) {
             errorMessage
         } else {
-            "Make sure you are connected to the Guest Wi-Fi network (not a different Wi-Fi or private hotspot), then try again."
+            "Make sure you are connected to the \"guest\" Wi-Fi network (not a different Wi-Fi or private hotspot), or check if the portal URL is correct in Settings."
         }
     }
 

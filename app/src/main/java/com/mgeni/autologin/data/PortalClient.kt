@@ -118,7 +118,7 @@ open class PortalClient(
                     } else {
                         if (!response.isSuccessful) {
                             return@withContext PageFetchResult.Error(
-                                "Couldn't reach the portal. Check that you're connected to Wi-Fi."
+                                "Couldn't reach the portal. Check that you're connected to the \"guest\" Wi-Fi network, or check if the portal URL is correct."
                             )
                         }
 
@@ -128,7 +128,7 @@ open class PortalClient(
                 }
             } catch (e: IOException) {
                 return@withContext PageFetchResult.Error(
-                    "Couldn't reach the portal. Check that you're connected to Wi-Fi."
+                    "Couldn't reach the portal. Check that you're connected to the \"guest\" Wi-Fi network, or check if the portal URL is correct."
                 )
             } catch (e: Exception) {
                 return@withContext PageFetchResult.Error(
@@ -242,7 +242,7 @@ open class PortalClient(
                 "Login failed. Your username or password may be incorrect."
             )
             is ConnectivityResult.Unreachable -> LoginSubmitResult.Failed(
-                "Login failed. Check that you're connected to Wi-Fi."
+                "Login failed. Check that you're connected to the \"guest\" Wi-Fi network."
             )
         }
     }

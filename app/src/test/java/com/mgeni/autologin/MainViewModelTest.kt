@@ -212,4 +212,21 @@ class MainViewModelTest {
         val updatedState = viewModel.uiState.value as MainUiState.AdvancedSettings
         assertTrue("Expected state hasSavedCredentials to be false", !updatedState.hasSavedCredentials)
     }
+
+    @Test
+    fun `unreachable connection check produces NotOnGuestNetwork advising guest and portal URL`() = runTest(testDispatcher) {
+        val fakeClient = FakePortalClient(ConnectivityResult.Unreachable("Network unreachable"))
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertTrue("Expected NotOnGuestNetwork, got $state", state is MainUiState.NotOnGuestNetwork)
+        val errorMsg = (state as MainUiState.NotOnGuestNetwork).errorMessage
+        assertTrue("Expected message to mention 'guest', got $errorMsg", errorMsg.contains("guest", ignoreCase = true))
+        assertTrue("Expected message to mention portal URL or Settings, got $errorMsg", errorMsg.contains("portal URL", ignoreCase = true) || errorMsg.contains("Settings", ignoreCase = true))
+    }
 }
