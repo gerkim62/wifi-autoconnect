@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.mgeni.autologin.data.NetworkState
 import com.mgeni.autologin.ui.components.ErrorStatusIcon
 import com.mgeni.autologin.ui.components.MobileDataWarningBanner
 import com.mgeni.autologin.ui.components.PrimaryActionButton
@@ -28,7 +29,7 @@ import com.mgeni.autologin.ui.components.SecondaryActionButton
 fun LoginFailedScreen(
     errorMessage: String,
     savedUsername: String,
-    isCellularActive: Boolean,
+    networkState: NetworkState,
     onTryAgainClick: () -> Unit,
     onEditCredentialsClick: (username: String) -> Unit,
     modifier: Modifier = Modifier
@@ -46,7 +47,7 @@ fun LoginFailedScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            MobileDataWarningBanner(isCellularActive = isCellularActive)
+            MobileDataWarningBanner(networkState = networkState)
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

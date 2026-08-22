@@ -76,7 +76,7 @@ class PortalClient(
             }
         } catch (e: IOException) {
             ConnectivityResult.Unreachable(
-                "Make sure you're connected to the Guest Wi-Fi network."
+                "Make sure you're connected to the Wi-Fi network."
             )
         } catch (e: Exception) {
             ConnectivityResult.Unreachable(
@@ -99,7 +99,7 @@ class PortalClient(
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful && response.code !in 300..399) {
                     return@withContext PageFetchResult.Error(
-                        "Couldn't reach the login page. Check you're on Guest Wi-Fi."
+                        "Couldn't reach the login page. Check that you're connected to Wi-Fi."
                     )
                 }
 
@@ -108,7 +108,7 @@ class PortalClient(
             }
         } catch (e: IOException) {
             PageFetchResult.Error(
-                "Couldn't reach the login page. Check you're on Guest Wi-Fi."
+                "Couldn't reach the login page. Check that you're connected to Wi-Fi."
             )
         } catch (e: Exception) {
             PageFetchResult.Error(
@@ -131,7 +131,7 @@ class PortalClient(
         val timeTag = timeTagInput?.attr("value")
         if (timeTag.isNullOrBlank()) {
             return PageFetchResult.Error(
-                "The login page looks different than expected. The portal may have changed."
+                "This Wi-Fi login page is not supported. WifiAuto cannot be used for this network yet. Please log in using your web browser, or contact the developer if you need support."
             )
         }
 
@@ -212,7 +212,7 @@ class PortalClient(
                 "Login failed. Your username or password may be incorrect."
             )
             is ConnectivityResult.Unreachable -> LoginSubmitResult.Failed(
-                "Login failed. Check you're on Guest Wi-Fi."
+                "Login failed. Check that you're connected to Wi-Fi."
             )
         }
     }

@@ -9,14 +9,24 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+enum class NetworkState {
+    OnlyCellular,
+    BothWifiAndCellular,
+    OnlyWifi,
+    Offline
+}
+
 /**
- * Monitors active network interfaces (Wi-Fi, Cellular) to warn users when
- * mobile data is active alongside captive Wi-Fi.
+ * Monitors active network interfaces (Wi-Fi, Cellular) in real-time to provide truthful,
+ * dynamic connectivity states and warnings.
  */
 class NetworkMonitor(context: Context) {
 
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+
+    private val _networkState = MutableStateFlow(NetworkState.Offline)
+    val networkState: StateFlow<NetworkState> = _networkState.asStateFlow()
 
     private val _isCellularActive = MutableStateFlow(false)
     val isCellularActive: StateFlow<Boolean> = _isCellularActive.asStateFlow()
@@ -90,5 +100,13 @@ class NetworkMonitor(context: Context) {
 
         _isCellularActive.value = hasCellular
         _isWifiActive.value = hasWifi
+
+        _networkState.value = when {
+            hasWifi && hasCellular -> NetworkState.BothWifiAndCellular
+            hasWifi && !hasCellular -> NetworkState.OnlyWifi
+            !hasWifi && hasCellular -> NetworkState.OnlyCellular
+            else -> NetworkState.Offline
+        }
     }
 }
+

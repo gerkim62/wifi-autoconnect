@@ -75,7 +75,7 @@ class PortalParserTest {
         assertTrue("Expected PageFetchResult.Error when token is missing", result is PageFetchResult.Error)
         val error = result as PageFetchResult.Error
         assertEquals(
-            "The login page looks different than expected. The portal may have changed.",
+            "This Wi-Fi login page is not supported. WifiAuto cannot be used for this network yet. Please log in using your web browser, or contact the developer if you need support.",
             error.message
         )
     }

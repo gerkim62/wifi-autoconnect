@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.mgeni.autologin.data.ConnectivityResult
 import com.mgeni.autologin.data.LoginSubmitResult
 import com.mgeni.autologin.data.NetworkMonitor
+import com.mgeni.autologin.data.NetworkState
 import com.mgeni.autologin.data.PageFetchResult
 import com.mgeni.autologin.data.PortalClient
 import com.mgeni.autologin.data.PreferencesManager
@@ -26,6 +27,9 @@ class MainViewModel(
 
     private val _uiState = MutableStateFlow<MainUiState>(MainUiState.CheckingConnection())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+
+    val networkState: StateFlow<NetworkState> = networkMonitor.networkState
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), NetworkState.Offline)
 
     val isCellularActive: StateFlow<Boolean> = networkMonitor.isCellularActive
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -66,7 +70,7 @@ class MainViewModel(
                 is ConnectivityResult.Unreachable -> {
                     slowNoticeJob.cancel()
                     _uiState.value = MainUiState.NotOnGuestNetwork(
-                        errorMessage = "Make sure you're connected to the Guest Wi-Fi network, then try again."
+                        errorMessage = "Make sure you're connected to the Wi-Fi network, then try again."
                     )
                 }
             }

@@ -1,6 +1,10 @@
 # Mgeni — Wi-Fi Auto-Login Android App
 
-A minimal, reliable Android utility app built with Kotlin and Jetpack Compose that automates login to the Safaricom "Guest" captive portal (`10.10.10.10/login.html`).
+A minimal Android utility app built with Kotlin and Jetpack Compose that automates login to the Safaricom **Guest** captive portal (`10.10.10.10/login.html`).
+
+## Current support
+
+WifiAuto currently supports the **Guest** Wi-Fi portal only. Other Wi-Fi providers and captive-portal implementations are not supported yet. Changing the portal URL in Advanced Settings does not add support for another portal.
 
 ---
 
@@ -10,7 +14,7 @@ A minimal, reliable Android utility app built with Kotlin and Jetpack Compose th
 - **8 Dedicated UI States**:
   1. **Splash / Loading**: Instant 204 connectivity check.
   2. **Already Connected**: Confirms active internet connection without login needed.
-  3. **Not on Guest Wi-Fi**: Clear guidance when captive portal is unreachable.
+  3. **Not on Guest Wi-Fi**: Clear guidance when the supported Guest portal is unreachable.
   4. **Login Screen**: Clean form with password visibility toggle, "Remember me" option, and advanced settings link.
   5. **Connecting Screen**: Real-time authentication feedback.
   6. **Success Screen**: Confirms successful connection.
@@ -29,7 +33,7 @@ A minimal, reliable Android utility app built with Kotlin and Jetpack Compose th
 - **HTML Parsing**: Jsoup 1.18
 - **Storage**: Android `SharedPreferences` (plaintext, per spec)
 - **Minimum SDK**: API 26 (Android 8.0)
-- **Target SDK**: API 35 (Android 15)
+- **Target SDK**: API 36 (Android 16)
 
 ---
 
@@ -54,12 +58,22 @@ com.mgeni.autologin/
 
 ## Building and Testing
 
-Open the project in **Android Studio (Ladybug / Koala or newer)** or run using Gradle:
+Build from the VS Code integrated terminal with Java 17 and Android SDK Platform 36 (including Build Tools 36.0.0) installed. Set the paths to your local installations before running Gradle:
 
 ```bash
+# Example paths used in this development environment
+export JAVA_HOME=/home/gerison/.jdks/temurin-17.0.20.1+1
+export ANDROID_HOME=/home/gerison/.android-sdk
+
 # Run unit tests
 ./gradlew test
 
-# Assemble Debug APK
-./gradlew assembleDebug
+# Build the debug APK
+./gradlew :app:assembleDebug
+```
+
+The debug APK is created at:
+
+```text
+app/build/outputs/apk/debug/app-debug.apk
 ```

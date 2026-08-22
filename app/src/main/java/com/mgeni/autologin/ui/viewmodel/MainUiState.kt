@@ -9,9 +9,9 @@ sealed interface MainUiState {
     // 2. Already connected screen
     data object AlreadyConnected : MainUiState
 
-    // 3. Not on Guest Wi-Fi / connection unreachable screen
+    // 3. Wi-Fi disconnected / connection unreachable screen
     data class NotOnGuestNetwork(
-        val errorMessage: String = "Make sure you're connected to the Guest Wi-Fi network, then try again."
+        val errorMessage: String = "Make sure you're connected to the Wi-Fi network, then try again."
     ) : MainUiState
 
     // 4. Login screen

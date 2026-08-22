@@ -58,7 +58,7 @@ fun ConnectingScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Authenticating with Guest portal…",
+                text = "Authenticating with Wi-Fi portal…",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

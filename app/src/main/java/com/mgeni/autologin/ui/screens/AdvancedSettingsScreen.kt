@@ -135,7 +135,7 @@ fun AdvancedSettingsScreen(
                                 color = WarningAmber
                             )
                             Text(
-                                text = "Only change these settings if you know what you're doing. The defaults work for the Guest network.",
+                                text = "Only change these settings if you know what you're doing. The defaults work for standard Wi-Fi login portals.",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 2.dp)

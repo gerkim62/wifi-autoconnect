@@ -15,19 +15,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.mgeni.autologin.data.NetworkState
 import com.mgeni.autologin.ui.components.AdvancedSettingsLink
 import com.mgeni.autologin.ui.components.ErrorStatusIcon
 import com.mgeni.autologin.ui.components.MobileDataWarningBanner
 import com.mgeni.autologin.ui.components.PrimaryActionButton
 
 /**
- * Screen 3: Not on Guest Wi-Fi Screen
+ * Screen 3: Wi-Fi Disconnected / Unreachable Screen
  * Shown when the 204 check times out or fails.
  */
 @Composable
 fun NotOnGuestScreen(
     errorMessage: String,
-    isCellularActive: Boolean,
+    networkState: NetworkState,
     onRetryClick: () -> Unit,
     onAdvancedSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -45,7 +46,7 @@ fun NotOnGuestScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            MobileDataWarningBanner(isCellularActive = isCellularActive)
+            MobileDataWarningBanner(networkState = networkState)
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -66,7 +67,7 @@ fun NotOnGuestScreen(
 
                 Text(
                     text = errorMessage.ifBlank {
-                        "Make sure you're connected to the Guest Wi-Fi network, then try again."
+                        "Make sure you're connected to the Wi-Fi network, then try again."
                     },
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

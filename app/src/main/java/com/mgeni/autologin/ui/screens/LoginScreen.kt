@@ -50,6 +50,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mgeni.autologin.data.NetworkState
 import com.mgeni.autologin.ui.components.AdvancedSettingsLink
 import com.mgeni.autologin.ui.components.MobileDataWarningBanner
 import com.mgeni.autologin.ui.components.PrimaryActionButton
@@ -69,7 +70,7 @@ fun LoginScreen(
     initialPassword: String,
     initialRememberMe: Boolean,
     errorMessage: String?,
-    isCellularActive: Boolean,
+    networkState: NetworkState,
     onConnectClick: (username: String, password: String, rememberMe: Boolean) -> Unit,
     onAdvancedSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -110,7 +111,7 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                MobileDataWarningBanner(isCellularActive = isCellularActive)
+                MobileDataWarningBanner(networkState = networkState)
 
                 Spacer(modifier = Modifier.height(20.dp))
 
@@ -124,7 +125,7 @@ fun LoginScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Wifi,
-                        contentDescription = "Mgeni Logo",
+                        contentDescription = "WifiAuto Logo",
                         tint = EmeraldPrimary,
                         modifier = Modifier.size(36.dp)
                     )
@@ -133,7 +134,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Guest Wi-Fi Login",
+                    text = "Wi-Fi Login",
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onBackground
                 )

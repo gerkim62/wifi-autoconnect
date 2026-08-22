@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.mgeni.autologin.data.NetworkState
 import com.mgeni.autologin.ui.components.MobileDataWarningBanner
 import com.mgeni.autologin.ui.components.PrimaryActionButton
 import com.mgeni.autologin.ui.components.SuccessStatusIcon
@@ -25,7 +26,7 @@ import com.mgeni.autologin.ui.components.SuccessStatusIcon
  */
 @Composable
 fun AlreadyConnectedScreen(
-    isCellularActive: Boolean,
+    networkState: NetworkState,
     onCloseClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -42,7 +43,7 @@ fun AlreadyConnectedScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            MobileDataWarningBanner(isCellularActive = isCellularActive)
+            MobileDataWarningBanner(networkState = networkState)
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

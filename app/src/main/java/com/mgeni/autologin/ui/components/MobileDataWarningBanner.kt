@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SignalCellularAlt
+import androidx.compose.material.icons.outlined.SignalWifiOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,26 +27,51 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mgeni.autologin.data.NetworkState
 import com.mgeni.autologin.ui.theme.WarningAmber
 import com.mgeni.autologin.ui.theme.WarningContainerDark
 import com.mgeni.autologin.ui.theme.WarningContainerLight
 
 /**
- * Sincere advice banner shown when mobile data is on simultaneously with Wi-Fi,
- * which can cause Android to route portal requests away from the local captive portal.
+ * Dynamic network advice banner shown when connectivity requires user attention:
+ * - Only Mobile Data is active (Wi-Fi disconnected)
+ * - Both Wi-Fi and Mobile Data are active (Android cellular priority conflict)
+ * - Completely offline
+ * Automatically hidden when normal Wi-Fi only is active.
  */
 @Composable
 fun MobileDataWarningBanner(
-    isCellularActive: Boolean,
+    networkState: NetworkState,
     modifier: Modifier = Modifier
 ) {
+    val isVisible = networkState != NetworkState.OnlyWifi
+
     AnimatedVisibility(
-        visible = isCellularActive,
+        visible = isVisible,
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically()
     ) {
         val isDark = MaterialTheme.colorScheme.background.red < 0.5f
         val bgColor = if (isDark) WarningContainerDark else WarningContainerLight
+
+        val (title, description, icon) = when (networkState) {
+            NetworkState.OnlyCellular -> Triple(
+                "Only Mobile Data is Active",
+                "Wi-Fi is disconnected. Please connect to your Wi-Fi network to sign in.",
+                Icons.Outlined.SignalCellularAlt
+            )
+            NetworkState.BothWifiAndCellular -> Triple(
+                "Both Wi-Fi and Mobile Data are Active",
+                "Android may prioritize mobile data over Wi-Fi. If you experience connection issues, consider turning off Mobile Data temporarily.",
+                Icons.Outlined.SignalCellularAlt
+            )
+            NetworkState.Offline -> Triple(
+                "No Connection",
+                "Wi-Fi is disconnected. Please turn on and connect to Wi-Fi to continue.",
+                Icons.Outlined.SignalWifiOff
+            )
+            NetworkState.OnlyWifi -> Triple("", "", Icons.Outlined.SignalCellularAlt)
+        }
 
         Box(
             modifier = modifier
@@ -59,20 +85,20 @@ fun MobileDataWarningBanner(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.SignalCellularAlt,
-                    contentDescription = "Mobile data active",
+                    imageVector = icon,
+                    contentDescription = title,
                     tint = WarningAmber,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
                     Text(
-                        text = "Mobile Data is Active",
+                        text = title,
                         style = MaterialTheme.typography.labelLarge,
                         color = WarningAmber
                     )
                     Text(
-                        text = "Android may prioritize cellular data over Guest Wi-Fi. If you experience connection issues, consider turning off Mobile Data temporarily.",
+                        text = description,
                         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 2.dp)
@@ -82,3 +108,4 @@ fun MobileDataWarningBanner(
         }
     }
 }
+

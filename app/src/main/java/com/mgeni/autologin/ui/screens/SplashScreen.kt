@@ -55,7 +55,7 @@ fun SplashScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Wifi,
-                    contentDescription = "Mgeni Logo",
+                    contentDescription = "WifiAuto Logo",
                     tint = EmeraldPrimary,
                     modifier = Modifier.size(48.dp)
                 )
@@ -64,7 +64,7 @@ fun SplashScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Mgeni",
+                text = "WifiAuto",
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground
             )
@@ -91,7 +91,7 @@ fun SplashScreen(
                     modifier = Modifier.padding(top = 24.dp, start = 16.dp, end = 16.dp)
                 ) {
                     Text(
-                        text = "This is taking longer than usual. Please ensure you are connected to the Guest Wi-Fi network…",
+                        text = "This is taking longer than usual. Please ensure you are connected to the Wi-Fi network…",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
