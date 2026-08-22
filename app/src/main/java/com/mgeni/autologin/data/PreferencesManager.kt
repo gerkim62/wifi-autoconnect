@@ -93,12 +93,12 @@ open class PreferencesManager(context: Context? = null) {
         prefs?.edit()?.apply {
             remove(KEY_USERNAME)
             remove(KEY_PASSWORD)
-            putBoolean(KEY_REMEMBER_ME, false)
+            putBoolean(KEY_REMEMBER_ME, true)
             apply()
         }
         memoryStore.remove(KEY_USERNAME)
         memoryStore.remove(KEY_PASSWORD)
-        memoryStore[KEY_REMEMBER_ME] = false
+        memoryStore[KEY_REMEMBER_ME] = true
     }
 
     fun resetPortalUrl() {

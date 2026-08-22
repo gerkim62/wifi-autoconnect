@@ -46,6 +46,7 @@ class MainViewModel(
     private var lastSubmittedRememberMe: Boolean = true
 
     private var checkJob: Job? = null
+    private var loginJob: Job? = null
 
     init {
         startConnectionCheck()
@@ -224,29 +225,39 @@ class MainViewModel(
         lastSubmittedPass = pass
         lastSubmittedRememberMe = remember
 
-        viewModelScope.launch {
+        loginJob?.cancel()
+        loginJob = viewModelScope.launch {
             _uiState.value = MainUiState.Connecting("Connecting to portal…", isTakingLong = false)
 
-            val portalUrl = preferencesManager.portalUrl
-            when (val pageResult = portalClient.fetchLoginPage(portalUrl)) {
-                is PageFetchResult.Error -> {
-                    _uiState.value = MainUiState.LoginForm(
-                        username = trimmedUser,
-                        password = pass,
-                        rememberMe = remember,
-                        errorMessage = pageResult.message
-                    )
+            try {
+                val portalUrl = preferencesManager.portalUrl
+                when (val pageResult = portalClient.fetchLoginPage(portalUrl)) {
+                    is PageFetchResult.Error -> {
+                        _uiState.value = MainUiState.LoginForm(
+                            username = trimmedUser,
+                            password = pass,
+                            rememberMe = remember,
+                            errorMessage = pageResult.message
+                        )
+                    }
+                    is PageFetchResult.Success -> {
+                        executeLogin(
+                            actionUrl = pageResult.actionUrl,
+                            username = trimmedUser,
+                            password = pass,
+                            timeTag = pageResult.timeTag,
+                            redirectUrl = pageResult.redirectUrl,
+                            rememberMe = remember
+                        )
+                    }
                 }
-                is PageFetchResult.Success -> {
-                    executeLogin(
-                        actionUrl = pageResult.actionUrl,
-                        username = trimmedUser,
-                        password = pass,
-                        timeTag = pageResult.timeTag,
-                        redirectUrl = pageResult.redirectUrl,
-                        rememberMe = remember
-                    )
-                }
+            } catch (e: Exception) {
+                _uiState.value = MainUiState.LoginForm(
+                    username = trimmedUser,
+                    password = pass,
+                    rememberMe = remember,
+                    errorMessage = "Network error while reaching portal. Please try again."
+                )
             }
         }
     }
@@ -269,13 +280,17 @@ class MainViewModel(
             }
         }
 
-        val submitResult = portalClient.submitLogin(
-            actionUrl = actionUrl,
-            username = username,
-            password = password,
-            timeTag = timeTag,
-            redirectUrl = redirectUrl
-        )
+        val submitResult = try {
+            portalClient.submitLogin(
+                actionUrl = actionUrl,
+                username = username,
+                password = password,
+                timeTag = timeTag,
+                redirectUrl = redirectUrl
+            )
+        } catch (e: Exception) {
+            LoginSubmitResult.Failed("Login attempt failed. Please check connection and try again.")
+        }
 
         slowJob.cancel()
 
@@ -305,27 +320,35 @@ class MainViewModel(
      */
     fun retryLastSubmittedCredentials() {
         if (lastSubmittedUser.isNotBlank() && lastSubmittedPass.isNotBlank()) {
-            viewModelScope.launch {
+            loginJob?.cancel()
+            loginJob = viewModelScope.launch {
                 _uiState.value = MainUiState.Connecting("Retrying connection…", isTakingLong = false)
 
-                val portalUrl = preferencesManager.portalUrl
-                when (val pageResult = portalClient.fetchLoginPage(portalUrl)) {
-                    is PageFetchResult.Error -> {
-                        _uiState.value = MainUiState.LoginFailed(
-                            errorMessage = pageResult.message,
-                            savedUsername = lastSubmittedUser
-                        )
+                try {
+                    val portalUrl = preferencesManager.portalUrl
+                    when (val pageResult = portalClient.fetchLoginPage(portalUrl)) {
+                        is PageFetchResult.Error -> {
+                            _uiState.value = MainUiState.LoginFailed(
+                                errorMessage = pageResult.message,
+                                savedUsername = lastSubmittedUser
+                            )
+                        }
+                        is PageFetchResult.Success -> {
+                            executeLogin(
+                                actionUrl = pageResult.actionUrl,
+                                username = lastSubmittedUser,
+                                password = lastSubmittedPass,
+                                timeTag = pageResult.timeTag,
+                                redirectUrl = pageResult.redirectUrl,
+                                rememberMe = lastSubmittedRememberMe
+                            )
+                        }
                     }
-                    is PageFetchResult.Success -> {
-                        executeLogin(
-                            actionUrl = pageResult.actionUrl,
-                            username = lastSubmittedUser,
-                            password = lastSubmittedPass,
-                            timeTag = pageResult.timeTag,
-                            redirectUrl = pageResult.redirectUrl,
-                            rememberMe = lastSubmittedRememberMe
-                        )
-                    }
+                } catch (e: Exception) {
+                    _uiState.value = MainUiState.LoginFailed(
+                        errorMessage = "Connection error during retry. Please try again.",
+                        savedUsername = lastSubmittedUser
+                    )
                 }
             }
         } else {

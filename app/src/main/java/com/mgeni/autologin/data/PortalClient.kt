@@ -38,9 +38,12 @@ open class PortalClient(
 
         fun createDefaultOkHttpClient(): OkHttpClient {
             return OkHttpClient.Builder()
-                .connectTimeout(20, TimeUnit.SECONDS)
-                .readTimeout(20, TimeUnit.SECONDS)
-                .writeTimeout(20, TimeUnit.SECONDS)
+                .connectTimeout(12, TimeUnit.SECONDS)
+                .readTimeout(12, TimeUnit.SECONDS)
+                .writeTimeout(12, TimeUnit.SECONDS)
+                .callTimeout(20, TimeUnit.SECONDS)
+                .retryOnConnectionFailure(true)
+                .connectionPool(okhttp3.ConnectionPool(0, 1, TimeUnit.SECONDS))
                 .followRedirects(false)
                 .followSslRedirects(false)
                 .build()
@@ -86,35 +89,62 @@ open class PortalClient(
     }
 
     /**
-     * Fetches the portal login HTML and extracts the required hidden tokens.
+     * Fetches the portal login HTML and extracts the required hidden tokens,
+     * following any HTTP redirects up to 5 hops to reach the actual login form.
      */
     open suspend fun fetchLoginPage(portalUrl: String): PageFetchResult = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url(portalUrl)
-            .header("User-Agent", "Mozilla/5.0 (Android; Mobile)")
-            .header("Cache-Control", "no-cache")
-            .build()
+        var currentUrl = portalUrl
+        var redirectsFollowed = 0
+        val maxRedirects = 5
 
-        try {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful && response.code !in 300..399) {
-                    return@withContext PageFetchResult.Error(
-                        "Couldn't reach the portal. Check that you're connected to Wi-Fi."
-                    )
+        while (redirectsFollowed < maxRedirects) {
+            val request = Request.Builder()
+                .url(currentUrl)
+                .header("User-Agent", "Mozilla/5.0 (Android; Mobile)")
+                .header("Cache-Control", "no-cache")
+                .header("Pragma", "no-cache")
+                .build()
+
+            var nextRedirectUrl: String? = null
+
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (response.isRedirect) {
+                        val location = response.header("Location")
+                        if (!location.isNullOrBlank()) {
+                            val resolvedUrl = currentUrl.toHttpUrlOrNull()?.resolve(location)?.toString() ?: location
+                            nextRedirectUrl = resolvedUrl
+                        }
+                    } else {
+                        if (!response.isSuccessful) {
+                            return@withContext PageFetchResult.Error(
+                                "Couldn't reach the portal. Check that you're connected to Wi-Fi."
+                            )
+                        }
+
+                        val htmlBody = response.body?.string().orEmpty()
+                        return@withContext parseLoginPage(htmlBody, currentUrl)
+                    }
                 }
-
-                val htmlBody = response.body?.string().orEmpty()
-                parseLoginPage(htmlBody, portalUrl)
+            } catch (e: IOException) {
+                return@withContext PageFetchResult.Error(
+                    "Couldn't reach the portal. Check that you're connected to Wi-Fi."
+                )
+            } catch (e: Exception) {
+                return@withContext PageFetchResult.Error(
+                    e.localizedMessage ?: "Unexpected error connecting to the portal."
+                )
             }
-        } catch (e: IOException) {
-            PageFetchResult.Error(
-                "Couldn't reach the portal. Check that you're connected to Wi-Fi."
-            )
-        } catch (e: Exception) {
-            PageFetchResult.Error(
-                e.localizedMessage ?: "Unexpected error connecting to the portal."
-            )
+
+            if (nextRedirectUrl != null) {
+                currentUrl = nextRedirectUrl!!
+                redirectsFollowed++
+            } else {
+                break
+            }
         }
+
+        return@withContext PageFetchResult.Error("Could not load captive portal login page.")
     }
 
     /**

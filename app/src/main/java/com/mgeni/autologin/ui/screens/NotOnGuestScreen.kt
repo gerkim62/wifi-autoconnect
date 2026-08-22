@@ -1,6 +1,5 @@
 package com.mgeni.autologin.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -8,8 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SignalCellularAlt
 import androidx.compose.material.icons.outlined.SignalWifiOff
@@ -31,7 +28,8 @@ import com.mgeni.autologin.ui.components.WarningStatusIcon
 
 /**
  * Screen 3: Wi-Fi Disconnected / Unreachable Screen
- * Features top bar actions (Gear + Info), pull-to-refresh connectivity check, and bottom-anchored Retry button.
+ * Features top bar actions (Gear + Info), pull-to-refresh connectivity check,
+ * upper-half optical status card positioning, and bottom-anchored Retry button.
  */
 @Composable
 fun NotOnGuestScreen(
@@ -85,70 +83,59 @@ fun NotOnGuestScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 24.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Show ambient advice banner when both Wi-Fi and Cellular are active
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (networkState == NetworkState.BothWifiAndCellular) {
-                        MobileDataWarningBanner(networkState = networkState)
-                    }
+                if (networkState == NetworkState.BothWifiAndCellular) {
+                    MobileDataWarningBanner(
+                        networkState = networkState,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                 }
 
-                Box(
+                // Top space (approx. 20-25% height) to position content gracefully in the upper half
+                Spacer(modifier = Modifier.weight(0.35f))
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .weight(1f)
                         .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    contentAlignment = Alignment.Center
+                        .padding(horizontal = 16.dp)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp)
-                    ) {
-                        when {
-                            isOnlyCellular -> WarningStatusIcon(icon = Icons.Outlined.SignalCellularAlt)
-                            isOffline -> WarningStatusIcon(icon = Icons.Outlined.SignalWifiOff)
-                            else -> ErrorStatusIcon()
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Text(
-                            text = headline,
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Text(
-                            text = description,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
+                    when {
+                        isOnlyCellular -> WarningStatusIcon(icon = Icons.Outlined.SignalCellularAlt)
+                        isOffline -> WarningStatusIcon(icon = Icons.Outlined.SignalWifiOff)
+                        else -> ErrorStatusIcon()
                     }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text(
+                        text = headline,
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
                 }
 
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                // Bottom space (approx. 40-45% height) to ensure content clearly sits in upper half
+                Spacer(modifier = Modifier.weight(0.65f))
+
+                PrimaryActionButton(
+                    text = "Retry",
+                    onClick = onRetryClick,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 28.dp)
-                ) {
-                    PrimaryActionButton(
-                        text = "Retry",
-                        onClick = onRetryClick
-                    )
-                }
+                )
             }
         }
     }
