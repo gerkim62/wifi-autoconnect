@@ -30,7 +30,7 @@ sealed interface LoginSubmitResult {
     data class Failed(val message: String) : LoginSubmitResult
 }
 
-class PortalClient(
+open class PortalClient(
     private val client: OkHttpClient = createDefaultOkHttpClient()
 ) {
     companion object {
@@ -50,7 +50,7 @@ class PortalClient(
     /**
      * Checks internet connectivity using Google's generate_204 endpoint.
      */
-    suspend fun check204Connectivity(
+    open suspend fun check204Connectivity(
         connectivityUrl: String = CONNECTIVITY_CHECK_URL
     ): ConnectivityResult = withContext(Dispatchers.IO) {
         val request = Request.Builder()
@@ -88,7 +88,7 @@ class PortalClient(
     /**
      * Fetches the portal login HTML and extracts the required hidden tokens.
      */
-    suspend fun fetchLoginPage(portalUrl: String): PageFetchResult = withContext(Dispatchers.IO) {
+    open suspend fun fetchLoginPage(portalUrl: String): PageFetchResult = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url(portalUrl)
             .header("User-Agent", "Mozilla/5.0 (Android; Mobile)")
@@ -120,7 +120,7 @@ class PortalClient(
     /**
      * Parses the HTML of the portal page to extract au_pxytimetag and form action.
      */
-    fun parseLoginPage(html: String, baseUrl: String): PageFetchResult {
+    open fun parseLoginPage(html: String, baseUrl: String): PageFetchResult {
         if (html.isBlank()) {
             return PageFetchResult.Error("The portal returned an empty response.")
         }
@@ -170,7 +170,7 @@ class PortalClient(
     /**
      * Submits the credentials to the portal and verifies internet access via 204 check.
      */
-    suspend fun submitLogin(
+    open suspend fun submitLogin(
         actionUrl: String,
         username: String,
         password: String,

@@ -1,6 +1,5 @@
 package com.mgeni.autologin.ui.viewmodel
 
-import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mgeni.autologin.data.ConnectivityResult
@@ -46,16 +45,49 @@ class MainViewModel(
     private var lastSubmittedPass: String = ""
     private var lastSubmittedRememberMe: Boolean = true
 
+    private var checkJob: Job? = null
+
     init {
         startConnectionCheck()
+        observeNetworkChanges()
+    }
+
+    private fun observeNetworkChanges() {
+        viewModelScope.launch {
+            var isFirstEmission = true
+            networkMonitor.wifiChangeCount.collect { _ ->
+                if (isFirstEmission) {
+                    isFirstEmission = false
+                    return@collect
+                }
+
+                val currentState = _uiState.value
+                // Preserve user context during active editing / form interaction
+                if (currentState is MainUiState.AdvancedSettings || currentState is MainUiState.LoginForm) {
+                    return@collect
+                }
+
+                if (!networkMonitor.isWifiActive.value) {
+                    // Wi-Fi lost / disconnected
+                    checkJob?.cancel()
+                    _uiState.value = MainUiState.NotOnGuestNetwork(
+                        errorMessage = "Make sure you're connected to the Wi-Fi network, then try again."
+                    )
+                } else {
+                    // Wi-Fi connected or changed
+                    startConnectionCheck()
+                }
+            }
+        }
     }
 
     /**
      * Step 1: Initial 204 check on app launch or retry.
      */
     fun startConnectionCheck() {
-        viewModelScope.launch {
-            val checkingStartedAt = SystemClock.elapsedRealtime()
+        checkJob?.cancel()
+        checkJob = viewModelScope.launch {
+            val checkingStartedAt = System.currentTimeMillis()
             _uiState.value = MainUiState.CheckingConnection(isTakingLong = false)
             networkMonitor.updateNetworkStates()
 
@@ -245,7 +277,7 @@ class MainViewModel(
     }
 
     private suspend fun keepCheckingScreenVisible(checkingStartedAt: Long) {
-        val elapsed = SystemClock.elapsedRealtime() - checkingStartedAt
+        val elapsed = System.currentTimeMillis() - checkingStartedAt
         delay((MINIMUM_CHECKING_DISPLAY_MILLIS - elapsed).coerceAtLeast(0L))
     }
 

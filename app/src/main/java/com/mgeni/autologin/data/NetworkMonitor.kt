@@ -20,21 +20,25 @@ enum class NetworkState {
  * Monitors active network interfaces (Wi-Fi, Cellular) in real-time to provide truthful,
  * dynamic connectivity states and warnings.
  */
-class NetworkMonitor(context: Context) {
+open class NetworkMonitor(context: Context? = null) {
 
     private val connectivityManager =
-        context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        context?.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
 
     private val _networkState = MutableStateFlow(NetworkState.Offline)
-    val networkState: StateFlow<NetworkState> = _networkState.asStateFlow()
+    open val networkState: StateFlow<NetworkState> = _networkState.asStateFlow()
 
     private val _isCellularActive = MutableStateFlow(false)
-    val isCellularActive: StateFlow<Boolean> = _isCellularActive.asStateFlow()
+    open val isCellularActive: StateFlow<Boolean> = _isCellularActive.asStateFlow()
 
     private val _isWifiActive = MutableStateFlow(false)
-    val isWifiActive: StateFlow<Boolean> = _isWifiActive.asStateFlow()
+    open val isWifiActive: StateFlow<Boolean> = _isWifiActive.asStateFlow()
+
+    private val _wifiChangeCount = MutableStateFlow(0L)
+    open val wifiChangeCount: StateFlow<Long> = _wifiChangeCount.asStateFlow()
 
     private val capabilitiesByNetwork = mutableMapOf<Network, NetworkCapabilities>()
+    private var lastWifiNetworks: Set<Network> = emptySet()
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -110,16 +114,23 @@ class NetworkMonitor(context: Context) {
     }
 
     private fun publishNetworkStates() {
-        val hasWifi = capabilitiesByNetwork.values.any { capabilities ->
+        val wifiNetworks = capabilitiesByNetwork.filter { (_, capabilities) ->
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
-        }
+        }.keys
+
+        val hasWifi = wifiNetworks.isNotEmpty()
         val hasCellular = capabilitiesByNetwork.values.any { capabilities ->
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED) &&
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        }
+
+        if (wifiNetworks != lastWifiNetworks) {
+            lastWifiNetworks = wifiNetworks.toSet()
+            _wifiChangeCount.value += 1L
         }
 
         _isCellularActive.value = hasCellular
@@ -129,6 +140,24 @@ class NetworkMonitor(context: Context) {
             hasWifi -> NetworkState.OnlyWifi
             hasCellular -> NetworkState.OnlyCellular
             else -> NetworkState.Offline
+        }
+    }
+
+    /**
+     * Testing hook to simulate network interface state transitions without Android Framework dependencies.
+     */
+    fun emitNetworkStateForTesting(hasWifi: Boolean, hasCellular: Boolean) {
+        _isCellularActive.value = hasCellular
+        val wifiChanged = _isWifiActive.value != hasWifi
+        _isWifiActive.value = hasWifi
+        _networkState.value = when {
+            hasWifi && hasCellular -> NetworkState.BothWifiAndCellular
+            hasWifi -> NetworkState.OnlyWifi
+            hasCellular -> NetworkState.OnlyCellular
+            else -> NetworkState.Offline
+        }
+        if (wifiChanged) {
+            _wifiChangeCount.value += 1L
         }
     }
 }

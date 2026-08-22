@@ -6,9 +6,10 @@ import android.content.SharedPreferences
 /**
  * Manages user credentials and portal preferences using Android SharedPreferences (plaintext).
  */
-class PreferencesManager(context: Context) {
+open class PreferencesManager(context: Context? = null) {
 
-    private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences? = context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val memoryStore = mutableMapOf<String, Any>()
 
     companion object {
         private const val PREFS_NAME = "mgeni_prefs"
@@ -22,48 +23,70 @@ class PreferencesManager(context: Context) {
     }
 
     var username: String
-        get() = prefs.getString(KEY_USERNAME, "") ?: ""
-        set(value) = prefs.edit().putString(KEY_USERNAME, value).apply()
+        get() = prefs?.getString(KEY_USERNAME, "") ?: (memoryStore[KEY_USERNAME] as? String ?: "")
+        set(value) {
+            prefs?.edit()?.putString(KEY_USERNAME, value)?.apply()
+            memoryStore[KEY_USERNAME] = value
+        }
 
     var password: String
-        get() = prefs.getString(KEY_PASSWORD, "") ?: ""
-        set(value) = prefs.edit().putString(KEY_PASSWORD, value).apply()
+        get() = prefs?.getString(KEY_PASSWORD, "") ?: (memoryStore[KEY_PASSWORD] as? String ?: "")
+        set(value) {
+            prefs?.edit()?.putString(KEY_PASSWORD, value)?.apply()
+            memoryStore[KEY_PASSWORD] = value
+        }
 
     var portalUrl: String
-        get() = prefs.getString(KEY_PORTAL_URL, DEFAULT_PORTAL_URL) ?: DEFAULT_PORTAL_URL
-        set(value) = prefs.edit().putString(KEY_PORTAL_URL, value.trim()).apply()
+        get() = prefs?.getString(KEY_PORTAL_URL, DEFAULT_PORTAL_URL)
+            ?: (memoryStore[KEY_PORTAL_URL] as? String ?: DEFAULT_PORTAL_URL)
+        set(value) {
+            val trimmed = value.trim()
+            prefs?.edit()?.putString(KEY_PORTAL_URL, trimmed)?.apply()
+            memoryStore[KEY_PORTAL_URL] = trimmed
+        }
 
     var rememberMe: Boolean
-        get() = prefs.getBoolean(KEY_REMEMBER_ME, true)
-        set(value) = prefs.edit().putBoolean(KEY_REMEMBER_ME, value).apply()
+        get() = prefs?.getBoolean(KEY_REMEMBER_ME, true) ?: (memoryStore[KEY_REMEMBER_ME] as? Boolean ?: true)
+        set(value) {
+            prefs?.edit()?.putBoolean(KEY_REMEMBER_ME, value)?.apply()
+            memoryStore[KEY_REMEMBER_ME] = value
+        }
 
     fun hasSavedCredentials(): Boolean {
         return rememberMe && username.isNotBlank() && password.isNotBlank()
     }
 
     fun saveCredentials(user: String, pass: String, remember: Boolean) {
-        prefs.edit().apply {
-            putBoolean(KEY_REMEMBER_ME, remember)
-            if (remember) {
-                putString(KEY_USERNAME, user.trim())
-                putString(KEY_PASSWORD, pass)
-            } else {
-                remove(KEY_USERNAME)
-                remove(KEY_PASSWORD)
+        if (prefs != null) {
+            prefs.edit().apply {
+                putBoolean(KEY_REMEMBER_ME, remember)
+                if (remember) {
+                    putString(KEY_USERNAME, user.trim())
+                    putString(KEY_PASSWORD, pass)
+                } else {
+                    remove(KEY_USERNAME)
+                    remove(KEY_PASSWORD)
+                }
+                apply()
             }
-            apply()
+        }
+        memoryStore[KEY_REMEMBER_ME] = remember
+        if (remember) {
+            memoryStore[KEY_USERNAME] = user.trim()
+            memoryStore[KEY_PASSWORD] = pass
+        } else {
+            memoryStore.remove(KEY_USERNAME)
+            memoryStore.remove(KEY_PASSWORD)
         }
     }
 
     fun clearSavedCredentials() {
-        prefs.edit().apply {
-            remove(KEY_PASSWORD)
-            // Note: Per spec, username is retained on login failure for user convenience
-            apply()
-        }
+        prefs?.edit()?.remove(KEY_PASSWORD)?.apply()
+        memoryStore.remove(KEY_PASSWORD)
     }
 
     fun resetPortalUrl() {
-        prefs.edit().putString(KEY_PORTAL_URL, DEFAULT_PORTAL_URL).apply()
+        prefs?.edit()?.putString(KEY_PORTAL_URL, DEFAULT_PORTAL_URL)?.apply()
+        memoryStore[KEY_PORTAL_URL] = DEFAULT_PORTAL_URL
     }
 }
