@@ -20,6 +20,7 @@ open class PreferencesManager(context: Context? = null) {
         private const val KEY_PASSWORD = "password"
         private const val KEY_PORTAL_URL = "portal_url"
         private const val KEY_REMEMBER_ME = "remember_me"
+        private const val KEY_CHECK_INTERNET_ON_STARTUP = "check_internet_on_startup"
         private const val KEY_SKIP_INITIAL_CHECK = "skip_initial_check"
     }
 
@@ -53,12 +54,28 @@ open class PreferencesManager(context: Context? = null) {
             memoryStore[KEY_REMEMBER_ME] = value
         }
 
-    var skipInitialInternetCheck: Boolean
-        get() = prefs?.getBoolean(KEY_SKIP_INITIAL_CHECK, false)
-            ?: (memoryStore[KEY_SKIP_INITIAL_CHECK] as? Boolean ?: false)
+    var checkInternetOnStartup: Boolean
+        get() {
+            if (prefs != null) {
+                if (prefs.contains(KEY_CHECK_INTERNET_ON_STARTUP)) {
+                    return prefs.getBoolean(KEY_CHECK_INTERNET_ON_STARTUP, true)
+                }
+                if (prefs.contains(KEY_SKIP_INITIAL_CHECK)) {
+                    return !prefs.getBoolean(KEY_SKIP_INITIAL_CHECK, false)
+                }
+            }
+            return (memoryStore[KEY_CHECK_INTERNET_ON_STARTUP] as? Boolean)
+                ?: ((memoryStore[KEY_SKIP_INITIAL_CHECK] as? Boolean)?.let { !it } ?: true)
+        }
         set(value) {
-            prefs?.edit()?.putBoolean(KEY_SKIP_INITIAL_CHECK, value)?.apply()
-            memoryStore[KEY_SKIP_INITIAL_CHECK] = value
+            prefs?.edit()?.putBoolean(KEY_CHECK_INTERNET_ON_STARTUP, value)?.apply()
+            memoryStore[KEY_CHECK_INTERNET_ON_STARTUP] = value
+        }
+
+    var skipInitialInternetCheck: Boolean
+        get() = !checkInternetOnStartup
+        set(value) {
+            checkInternetOnStartup = !value
         }
 
     fun hasSavedCredentials(): Boolean {

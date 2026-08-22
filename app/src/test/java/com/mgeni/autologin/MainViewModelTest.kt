@@ -135,8 +135,8 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `skipInitialInternetCheck bypasses 204 check and immediately loads portal`() = runTest(testDispatcher) {
-        preferencesManager.skipInitialInternetCheck = true
+    fun `checkInternetOnStartup disabled bypasses 204 check and immediately loads portal`() = runTest(testDispatcher) {
+        preferencesManager.checkInternetOnStartup = false
         var check204Called = false
         var fetchPageCalled = false
 
@@ -163,7 +163,7 @@ class MainViewModelTest {
         )
 
         advanceUntilIdle()
-        assertTrue("204 check should NOT have been called when skipInitialInternetCheck is true", !check204Called)
+        assertTrue("204 check should NOT have been called when checkInternetOnStartup is false", !check204Called)
         assertTrue("fetchLoginPage should have been called directly", fetchPageCalled)
         assertTrue("Expected LoginForm, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.LoginForm)
     }

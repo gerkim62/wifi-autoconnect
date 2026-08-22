@@ -72,17 +72,17 @@ import com.mgeni.autologin.ui.theme.WarningContainerLight
 @Composable
 fun AdvancedSettingsScreen(
     currentPortalUrl: String,
-    initialSkipInitialCheck: Boolean = false,
+    initialCheckInternetOnStartup: Boolean = true,
     hasSavedCredentials: Boolean = false,
     errorMessage: String? = null,
-    onSaveClick: (newUrl: String, skipInitialCheck: Boolean) -> Unit,
+    onSaveClick: (newUrl: String, checkInternetOnStartup: Boolean) -> Unit,
     onClearCredentialsClick: () -> Unit = {},
     onResetToDefaultClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var portalUrl by remember(currentPortalUrl) { mutableStateOf(currentPortalUrl) }
-    var skipInitialCheck by remember(initialSkipInitialCheck) { mutableStateOf(initialSkipInitialCheck) }
+    var checkInternetOnStartup by remember(initialCheckInternetOnStartup) { mutableStateOf(initialCheckInternetOnStartup) }
     var showClearCredsDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -106,7 +106,7 @@ fun AdvancedSettingsScreen(
     if (showResetDialog) {
         ConfirmationDialog(
             title = "Reset to default?",
-            message = "This will restore the portal URL to http://10.10.10.10/login.html and re-enable initial internet checks.",
+            message = "This will restore the default portal URL and enable initial internet checks.",
             confirmButtonText = "Reset",
             isDestructive = false,
             icon = Icons.Outlined.RestartAlt,
@@ -131,7 +131,8 @@ fun AdvancedSettingsScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
@@ -179,7 +180,7 @@ fun AdvancedSettingsScreen(
                                 color = WarningAmber
                             )
                             Text(
-                                text = "Only change these settings if you know what you're doing. The defaults work for standard Wi-Fi login portals.",
+                                text = "Default settings are configured for the \"guest\" Wi-Fi portal.",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 2.dp)
@@ -218,7 +219,7 @@ fun AdvancedSettingsScreen(
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "Endpoint where the login page and authentication form reside. Check if this portal URL is correct if you have trouble connecting to the \"guest\" Wi-Fi network.",
+                    text = "Captive portal address for the \"guest\" Wi-Fi network.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
@@ -243,7 +244,7 @@ fun AdvancedSettingsScreen(
                     keyboardActions = KeyboardActions(
                         onDone = {
                             focusManager.clearFocus()
-                            onSaveClick(portalUrl, skipInitialCheck)
+                            onSaveClick(portalUrl, checkInternetOnStartup)
                         }
                     ),
                     shape = RoundedCornerShape(12.dp),
@@ -264,13 +265,13 @@ fun AdvancedSettingsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Skip Initial Internet Check Option
+                // Check Internet Connectivity on Startup Option
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
-                        .clickable { skipInitialCheck = !skipInitialCheck }
+                        .clickable { checkInternetOnStartup = !checkInternetOnStartup }
                         .padding(14.dp)
                 ) {
                     Row(
@@ -286,12 +287,12 @@ fun AdvancedSettingsScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Skip initial internet check",
+                                text = "Check internet on startup",
                                 style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
                                 color = MaterialTheme.colorScheme.onBackground
                             )
                             Text(
-                                text = "Do not check for internet on startup. Directly open the portal or sign in immediately.",
+                                text = "Verify connectivity before opening the portal.",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 2.dp)
@@ -299,8 +300,8 @@ fun AdvancedSettingsScreen(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Switch(
-                            checked = skipInitialCheck,
-                            onCheckedChange = { skipInitialCheck = it },
+                            checked = checkInternetOnStartup,
+                            onCheckedChange = { checkInternetOnStartup = it },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                                 checkedTrackColor = MaterialTheme.colorScheme.primary
@@ -340,7 +341,7 @@ fun AdvancedSettingsScreen(
                                 )
                             )
                             Text(
-                                text = if (hasSavedCredentials) "Remove stored username and password from this device." else "No credentials currently stored on device.",
+                                text = if (hasSavedCredentials) "Remove saved credentials from device." else "No credentials stored.",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (hasSavedCredentials) 1f else 0.5f),
                                 modifier = Modifier.padding(top = 2.dp)
@@ -359,7 +360,7 @@ fun AdvancedSettingsScreen(
                     text = "Save",
                     onClick = {
                         focusManager.clearFocus()
-                        onSaveClick(portalUrl, skipInitialCheck)
+                        onSaveClick(portalUrl, checkInternetOnStartup)
                     }
                 )
 

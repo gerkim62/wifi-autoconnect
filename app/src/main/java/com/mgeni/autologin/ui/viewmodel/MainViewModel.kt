@@ -92,7 +92,7 @@ class MainViewModel(
             _uiState.value = MainUiState.CheckingConnection(isTakingLong = false)
             networkMonitor.updateNetworkStates()
 
-            if (preferencesManager.skipInitialInternetCheck) {
+            if (!preferencesManager.checkInternetOnStartup) {
                 // Bypass 204 internet check and directly load the captive portal page
                 keepCheckingScreenVisible(checkingStartedAt)
                 proceedToCaptivePortal()
@@ -375,11 +375,11 @@ class MainViewModel(
         val currentState = _uiState.value
         val currentUrl = preferencesManager.portalUrl
         val isDefault = currentUrl == PreferencesManager.DEFAULT_PORTAL_URL
-        val skipInitial = preferencesManager.skipInitialInternetCheck
+        val checkInternet = preferencesManager.checkInternetOnStartup
         val hasSavedCreds = preferencesManager.hasSavedCredentials()
         _uiState.value = MainUiState.AdvancedSettings(
             portalUrl = currentUrl,
-            skipInitialInternetCheck = skipInitial,
+            checkInternetOnStartup = checkInternet,
             hasSavedCredentials = hasSavedCreds,
             isDefault = isDefault,
             errorMessage = null,
@@ -401,7 +401,7 @@ class MainViewModel(
     /**
      * Validates and saves customized Portal URL and preferences in Advanced Settings, then triggers fresh check.
      */
-    fun saveAdvancedSettings(newUrl: String, skipInitialCheck: Boolean = false) {
+    fun saveAdvancedSettings(newUrl: String, checkInternetOnStartup: Boolean = true) {
         val cleanedUrl = newUrl.trim()
         val parsed = cleanedUrl.toHttpUrlOrNull()
 
@@ -410,7 +410,7 @@ class MainViewModel(
             if (currentSettings != null) {
                 _uiState.value = currentSettings.copy(
                     portalUrl = cleanedUrl,
-                    skipInitialInternetCheck = skipInitialCheck,
+                    checkInternetOnStartup = checkInternetOnStartup,
                     errorMessage = "Please enter a valid URL starting with http:// or https://"
                 )
             }
@@ -418,7 +418,7 @@ class MainViewModel(
         }
 
         preferencesManager.portalUrl = cleanedUrl
-        preferencesManager.skipInitialInternetCheck = skipInitialCheck
+        preferencesManager.checkInternetOnStartup = checkInternetOnStartup
         startConnectionCheck()
     }
 
@@ -427,7 +427,7 @@ class MainViewModel(
      */
     fun resetAdvancedSettingsToDefault() {
         preferencesManager.resetPortalUrl()
-        preferencesManager.skipInitialInternetCheck = false
+        preferencesManager.checkInternetOnStartup = true
         startConnectionCheck()
     }
 

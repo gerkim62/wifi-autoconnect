@@ -174,11 +174,11 @@ fun MgeniApp(
 
                 AdvancedSettingsScreen(
                     currentPortalUrl = state.portalUrl,
-                    initialSkipInitialCheck = state.skipInitialInternetCheck,
+                    initialCheckInternetOnStartup = state.checkInternetOnStartup,
                     hasSavedCredentials = state.hasSavedCredentials,
                     errorMessage = state.errorMessage,
-                    onSaveClick = { newUrl, skipInitialCheck ->
-                        viewModel.saveAdvancedSettings(newUrl, skipInitialCheck)
+                    onSaveClick = { newUrl, checkInternetOnStartup ->
+                        viewModel.saveAdvancedSettings(newUrl, checkInternetOnStartup)
                     },
                     onClearCredentialsClick = {
                         viewModel.clearSavedCredentials()
