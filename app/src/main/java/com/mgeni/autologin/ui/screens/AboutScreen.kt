@@ -2,8 +2,11 @@ package com.mgeni.autologin.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.res.painterResource
+import com.mgeni.autologin.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -109,20 +112,13 @@ fun AboutScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // App Branding Header
-            Box(
+            Image(
+                painter = painterResource(id = R.drawable.app_logo),
+                contentDescription = "WifiAuto Logo",
                 modifier = Modifier
                     .size(76.dp)
-                    .clip(CircleShape)
-                    .background(EmeraldContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Wifi,
-                    contentDescription = "WifiAuto Logo",
-                    tint = EmeraldPrimary,
-                    modifier = Modifier.size(40.dp)
-                )
-            }
+                    .clip(RoundedCornerShape(18.dp))
+            )
 
             Spacer(modifier = Modifier.height(14.dp))
 
@@ -176,7 +172,7 @@ fun AboutScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Authorization Notice
+            // Authorization & Disclaimer Card
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -186,7 +182,7 @@ fun AboutScreen(
             ) {
                 Row(verticalAlignment = Alignment.Top) {
                     Icon(
-                        imageVector = Icons.Outlined.Lock,
+                        imageVector = Icons.Outlined.Shield,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(22.dp)
@@ -194,7 +190,7 @@ fun AboutScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "For Authorized Use Only",
+                            text = "Disclaimer & Terms",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 15.sp
@@ -203,7 +199,7 @@ fun AboutScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Please ensure you have proper authorization and valid credentials before connecting to the \"guest\" Wi-Fi network.",
+                            text = "WifiAuto is an independent open-source utility for personal automation. It is not affiliated with, endorsed by, or sponsored by Safaricom PLC or any network operator. All trademarks belong to their respective owners. Please ensure you have valid credentials before connecting.",
                             style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

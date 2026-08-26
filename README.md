@@ -132,3 +132,13 @@ guest-auto/
 │   └── index.html                    # Mock captive portal login HTML
 └── README.md
 ```
+
+---
+
+## ⚖️ Disclaimer & Terms of Use
+
+- **Unofficial & Independent**: WifiAuto is an independent open-source utility developed strictly for personal automation and convenience.
+- **No Affiliation**: This software is not affiliated with, endorsed by, sponsored by, or associated in any way with Safaricom PLC or any other telecommunications provider. All trademarks, service marks, brand names, and logos belong exclusively to their respective owners.
+- **Authorized Use Only**: This utility does not bypass authentication or security controls. Users are solely responsible for ensuring they have valid authorization and legitimate credentials before connecting to any network.
+- **Compliance & Takedown Policy**: This project is developed and published in good faith for personal and educational utility. If any network operator, service provider, or rights holder believes this project conflicts with their policies or terms of service, please contact the developer or open an issue, and the repository/software will be promptly reviewed, modified, or removed.
+- **"As-Is" Provision**: This software is provided on an "AS IS" basis without warranties of any kind. The author assumes no responsibility or liability for any network disruptions, misuse, or policy violations.

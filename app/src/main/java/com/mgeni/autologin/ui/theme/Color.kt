@@ -2,7 +2,7 @@ package com.mgeni.autologin.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Emerald / Safaricom-inspired Green Primary Palette
+// Emerald Green Primary Palette
 val EmeraldPrimary = Color(0xFF00A859)
 val EmeraldPrimaryDark = Color(0xFF00884A)
 val EmeraldPrimaryLight = Color(0xFF00C853)

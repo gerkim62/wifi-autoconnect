@@ -1,8 +1,10 @@
 package com.mgeni.autologin.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -177,20 +179,13 @@ fun LoginScreen(
                             .fillMaxWidth()
                             .padding(vertical = 12.dp)
                     ) {
-                        Box(
+                        Image(
+                            painter = painterResource(id = com.mgeni.autologin.R.drawable.app_logo),
+                            contentDescription = "WifiAuto Logo",
                             modifier = Modifier
                                 .size(64.dp)
-                                .clip(CircleShape)
-                                .background(EmeraldContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Wifi,
-                                contentDescription = "WifiAuto Logo",
-                                tint = EmeraldPrimary,
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
+                                .clip(RoundedCornerShape(16.dp))
+                        )
 
                         Spacer(modifier = Modifier.height(12.dp))
 

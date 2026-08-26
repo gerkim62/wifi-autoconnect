@@ -26,6 +26,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.res.painterResource
+import com.mgeni.autologin.R
 import com.mgeni.autologin.ui.components.TopBarActions
 import com.mgeni.autologin.ui.theme.EmeraldContainer
 import com.mgeni.autologin.ui.theme.EmeraldPrimary
@@ -62,20 +66,13 @@ fun SplashScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-            Box(
+            Image(
+                painter = painterResource(id = R.drawable.app_logo),
+                contentDescription = "WifiAuto Logo",
                 modifier = Modifier
                     .size(88.dp)
-                    .clip(CircleShape)
-                    .background(EmeraldContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Wifi,
-                    contentDescription = "WifiAuto Logo",
-                    tint = EmeraldPrimary,
-                    modifier = Modifier.size(48.dp)
-                )
-            }
+                    .clip(RoundedCornerShape(22.dp))
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
