@@ -89,19 +89,26 @@ open class NetworkMonitor(context: Context? = null) {
     private val defaultNetworkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             AppLogger.d("NETWORK_MONITOR", "defaultNetwork onAvailable: network=$network")
-            publishNetworkStates()
+            updateNetworkStates()
         }
 
         override fun onLost(network: Network) {
             AppLogger.d("NETWORK_MONITOR", "defaultNetwork onLost: network=$network")
-            publishNetworkStates()
+            updateNetworkStates()
         }
 
         override fun onCapabilitiesChanged(
             network: Network,
             networkCapabilities: NetworkCapabilities
         ) {
-            publishNetworkStates()
+            updateNetworkStates()
+        }
+
+        override fun onLinkPropertiesChanged(
+            network: Network,
+            linkProperties: LinkProperties
+        ) {
+            updateNetworkStates()
         }
     }
 
@@ -161,20 +168,19 @@ open class NetworkMonitor(context: Context? = null) {
 
     private fun publishNetworkStates() {
         val wifiNetworks = synchronized(capabilitiesByNetwork) {
-            capabilitiesByNetwork.filter { (net, capabilities) ->
-                val lp = linkPropertiesByNetwork[net]
-                val hasIpConfig = lp == null || lp.linkAddresses.isNotEmpty()
+            capabilitiesByNetwork.filter { (_, capabilities) ->
                 capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
-                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED) &&
-                    hasIpConfig
+                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
             }.keys
         }
 
         val hasWifi = wifiNetworks.isNotEmpty()
-        val hasCellular = capabilitiesByNetwork.values.any { capabilities ->
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
+        val hasCellular = synchronized(capabilitiesByNetwork) {
+            capabilitiesByNetwork.values.any { capabilities ->
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
+            }
         }
 
         if (wifiNetworks != lastWifiNetworks) {

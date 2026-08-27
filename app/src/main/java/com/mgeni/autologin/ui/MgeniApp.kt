@@ -13,6 +13,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -20,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import com.mgeni.autologin.ui.components.BackgroundLoadingIndicator
 import com.mgeni.autologin.ui.screens.AboutScreen
 import com.mgeni.autologin.ui.screens.AdvancedSettingsScreen
@@ -230,7 +233,10 @@ fun MgeniApp(
         BackgroundLoadingIndicator(
             visible = isBackgroundChecking && uiState !is MainUiState.CheckingConnection && uiState !is MainUiState.Connecting,
             message = backgroundStatusMessage,
-            modifier = Modifier.align(Alignment.TopCenter)
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(top = 12.dp)
         )
     }
 }

@@ -109,6 +109,36 @@ class MainViewModel(
                 }
             }
         }
+
+        viewModelScope.launch {
+            var isFirstState = true
+            networkMonitor.networkState.collect { netState ->
+                if (isFirstState) {
+                    isFirstState = false
+                    return@collect
+                }
+                AppLogger.i("VIEW_MODEL", "NetworkState change observed: $netState")
+                val currentState = _uiState.value
+                if (currentState is MainUiState.AdvancedSettings ||
+                    currentState is MainUiState.About ||
+                    currentState is MainUiState.LoginForm
+                ) {
+                    return@collect
+                }
+
+                if (netState == NetworkState.Offline || netState == NetworkState.OnlyCellular) {
+                    checkJob?.cancel()
+                    _isBackgroundChecking.value = false
+                    _uiState.value = MainUiState.NotOnGuestNetwork(
+                        errorMessage = if (netState == NetworkState.OnlyCellular) {
+                            "You are using mobile data, but WifiAuto requires Wi-Fi. Connect to the \"guest\" Wi-Fi network to sign in."
+                        } else {
+                            "Wi-Fi is disconnected. Please turn on Wi-Fi and connect to the \"guest\" Wi-Fi network, then try again."
+                        }
+                    )
+                }
+            }
+        }
     }
 
     private fun updateModalPreviousState(newState: MainUiState) {
