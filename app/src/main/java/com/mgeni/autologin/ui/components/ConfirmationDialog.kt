@@ -112,14 +112,12 @@ fun ConfirmationDialog(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedButton(
+                    androidx.compose.material3.TextButton(
                         onClick = onDismiss,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        modifier = Modifier.padding(end = 8.dp)
                     ) {
                         Text(
                             text = dismissButtonText,
@@ -129,9 +127,6 @@ fun ConfirmationDialog(
 
                     Button(
                         onClick = onConfirm,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = if (isDestructive) {
                             ButtonDefaults.buttonColors(

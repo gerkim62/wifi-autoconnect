@@ -1,7 +1,11 @@
 package com.mgeni.autologin.ui.viewmodel
 
+import android.content.Context
+import android.content.Intent
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mgeni.autologin.data.AppLogger
 import com.mgeni.autologin.data.ConnectivityResult
 import com.mgeni.autologin.data.LoginSubmitResult
 import com.mgeni.autologin.data.NetworkMonitor
@@ -34,13 +38,24 @@ class MainViewModel(
     private val _uiState = MutableStateFlow<MainUiState>(MainUiState.CheckingConnection())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
+    private val _isBackgroundChecking = MutableStateFlow(false)
+    val isBackgroundChecking: StateFlow<Boolean> = _isBackgroundChecking.asStateFlow()
+
+    private val _backgroundStatusMessage = MutableStateFlow("Checking connection…")
+    val backgroundStatusMessage: StateFlow<String> = _backgroundStatusMessage.asStateFlow()
+
+    val logCount: StateFlow<Int> = AppLogger.logCount
+
     val networkState: StateFlow<NetworkState> = networkMonitor.networkState
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), NetworkState.Offline)
 
     val isCellularActive: StateFlow<Boolean> = networkMonitor.isCellularActive
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    // In-memory retention of last submitted credentials for "Try again" action
+    // Tracks whether cold-start check has finished so we never flash full-screen splash during user interaction
+    private var hasCompletedInitialLaunch = false
+
+    // In-memory retention of last submitted credentials for retry actions
     private var lastSubmittedUser: String = ""
     private var lastSubmittedPass: String = ""
     private var lastSubmittedRememberMe: Boolean = true
@@ -49,53 +64,93 @@ class MainViewModel(
     private var loginJob: Job? = null
 
     init {
-        startConnectionCheck()
+        AppLogger.i("VIEW_MODEL", "MainViewModel initialized. Launching initial cold-start connection check.")
+        startConnectionCheck(isUserInitiated = true)
         observeNetworkChanges()
     }
 
     private fun observeNetworkChanges() {
         viewModelScope.launch {
+            networkMonitor.activeWifiNetwork.collect { wifiNetwork ->
+                portalClient.bindToNetwork(wifiNetwork)
+            }
+        }
+
+        viewModelScope.launch {
             var isFirstEmission = true
-            networkMonitor.wifiChangeCount.collect { _ ->
+            networkMonitor.wifiChangeCount.collect { changeCount ->
                 if (isFirstEmission) {
                     isFirstEmission = false
                     return@collect
                 }
 
+                AppLogger.i("VIEW_MODEL", "Wi-Fi change observed (changeCount=$changeCount, isWifiActive=${networkMonitor.isWifiActive.value})")
+
                 val currentState = _uiState.value
-                // Preserve user context during active editing / form interaction
-                if (currentState is MainUiState.AdvancedSettings || currentState is MainUiState.LoginForm) {
+                // Never interrupt active user screens (Settings, About, LoginForm typing)
+                if (currentState is MainUiState.AdvancedSettings ||
+                    currentState is MainUiState.About ||
+                    currentState is MainUiState.LoginForm
+                ) {
+                    AppLogger.d("VIEW_MODEL", "Network changed while user active on ${currentState::class.simpleName}; preserving view.")
                     return@collect
                 }
 
                 if (!networkMonitor.isWifiActive.value) {
                     // Wi-Fi lost / disconnected
                     checkJob?.cancel()
+                    _isBackgroundChecking.value = false
                     _uiState.value = MainUiState.NotOnGuestNetwork(
                         errorMessage = "Make sure you're connected to the \"guest\" Wi-Fi network, or check if the portal URL is correct in Settings."
                     )
                 } else {
-                    // Wi-Fi connected or changed
-                    startConnectionCheck()
+                    // Wi-Fi connected or changed: run dynamic non-intrusive background check
+                    startConnectionCheck(isUserInitiated = false)
                 }
             }
         }
     }
 
+    private fun updateModalPreviousState(newState: MainUiState) {
+        val current = _uiState.value
+        if (current is MainUiState.AdvancedSettings) {
+            _uiState.value = current.copy(previousState = newState)
+        } else if (current is MainUiState.About) {
+            _uiState.value = current.copy(previousState = newState)
+        }
+    }
+
     /**
-     * Step 1: Initial 204 check on app launch or retry.
+     * Step 1: Initial 204 check on app launch, manual refresh, or background Wi-Fi event.
+     * @param isUserInitiated If true (cold start or explicit user pull-to-refresh), shows full-screen checking;
+     *                        if false (background event), shows non-intrusive top indicator.
      */
-    fun startConnectionCheck() {
+    fun startConnectionCheck(isUserInitiated: Boolean = true) {
         checkJob?.cancel()
         checkJob = viewModelScope.launch {
+            val currentState = _uiState.value
+            val isModal = currentState is MainUiState.AdvancedSettings || currentState is MainUiState.About
+
+            if (isUserInitiated && !isModal) {
+                _uiState.value = MainUiState.CheckingConnection(isTakingLong = false)
+                _isBackgroundChecking.value = false
+            } else {
+                _isBackgroundChecking.value = true
+                _backgroundStatusMessage.value = "Checking connection…"
+            }
+
             val checkingStartedAt = System.currentTimeMillis()
-            _uiState.value = MainUiState.CheckingConnection(isTakingLong = false)
+            portalClient.bindToNetwork(networkMonitor.activeWifiNetwork.value)
             networkMonitor.updateNetworkStates()
 
             if (!preferencesManager.checkInternetOnStartup) {
-                // Bypass 204 internet check and directly load the captive portal page
-                keepCheckingScreenVisible(checkingStartedAt)
-                proceedToCaptivePortal()
+                AppLogger.i("VIEW_MODEL", "checkInternetOnStartup is disabled; bypassing 204 check and loading portal directly.")
+                if (isUserInitiated && !isModal) {
+                    keepCheckingScreenVisible(checkingStartedAt)
+                }
+                proceedToCaptivePortal(isUserInitiated = isUserInitiated)
+                _isBackgroundChecking.value = false
+                hasCompletedInitialLaunch = true
                 return@launch
             }
 
@@ -104,16 +159,21 @@ class MainViewModel(
                 if (_uiState.value is MainUiState.CheckingConnection) {
                     _uiState.value = MainUiState.CheckingConnection(isTakingLong = true)
                 }
+                if (_isBackgroundChecking.value) {
+                    _backgroundStatusMessage.value = "Connection check is taking longer than usual…"
+                }
             }
 
             var result = portalClient.check204Connectivity()
 
             // If Wi-Fi is actively establishing connection and first ping returned Unreachable,
-            // retry to allow DHCP negotiation to settle before failing
+            // retry with backoff to allow DHCP and ARP tables to settle before failing
             if (result is ConnectivityResult.Unreachable && networkMonitor.isWifiActive.value) {
-                for (retry in 1..2) {
-                    delay(600L)
+                for (retry in 1..3) {
+                    AppLogger.i("VIEW_MODEL", "DHCP settlement retry #$retry for 204 connectivity...")
+                    delay(800L)
                     networkMonitor.updateNetworkStates()
+                    portalClient.bindToNetwork(networkMonitor.activeWifiNetwork.value)
                     result = portalClient.check204Connectivity()
                     if (result !is ConnectivityResult.Unreachable) break
                 }
@@ -123,32 +183,52 @@ class MainViewModel(
 
             when (result) {
                 is ConnectivityResult.AlreadyConnected -> {
-                    keepCheckingScreenVisible(checkingStartedAt)
-                    _uiState.value = MainUiState.AlreadyConnected
+                    AppLogger.i("VIEW_MODEL", "204 check passed: Internet already active.")
+                    if (isUserInitiated && !isModal) {
+                        keepCheckingScreenVisible(checkingStartedAt)
+                        _uiState.value = MainUiState.AlreadyConnected
+                    } else if (isModal) {
+                        updateModalPreviousState(MainUiState.AlreadyConnected)
+                    } else {
+                        _uiState.value = MainUiState.AlreadyConnected
+                    }
                 }
                 is ConnectivityResult.CaptiveDetected -> {
-                    // Start useful portal work right away; only the visible screen change is gated.
+                    AppLogger.i("VIEW_MODEL", "Captive portal detected. Redirect hint: ${result.portalRedirectUrl}")
                     val pageResult = async {
                         fetchCaptivePortalLoginPage(result.portalRedirectUrl)
                     }
-                    keepCheckingScreenVisible(checkingStartedAt)
-                    handlePortalPageResult(pageResult.await())
+                    if (isUserInitiated && !isModal) {
+                        keepCheckingScreenVisible(checkingStartedAt)
+                    }
+                    handlePortalPageResult(pageResult.await(), isUserInitiated = isUserInitiated)
                 }
                 is ConnectivityResult.Unreachable -> {
-                    keepCheckingScreenVisible(checkingStartedAt)
-                    _uiState.value = MainUiState.NotOnGuestNetwork(
+                    AppLogger.w("VIEW_MODEL", "204 unreachable: ${result.message}")
+                    val unreachableState = MainUiState.NotOnGuestNetwork(
                         errorMessage = "Make sure you're connected to the \"guest\" Wi-Fi network, or check if the portal URL is correct in Settings."
                     )
+                    if (isUserInitiated && !isModal) {
+                        keepCheckingScreenVisible(checkingStartedAt)
+                        _uiState.value = unreachableState
+                    } else if (isModal) {
+                        updateModalPreviousState(unreachableState)
+                    } else if (!networkMonitor.isWifiActive.value) {
+                        _uiState.value = unreachableState
+                    }
                 }
             }
+
+            _isBackgroundChecking.value = false
+            hasCompletedInitialLaunch = true
         }
     }
 
     /**
      * Step 2: Fetch the captive portal login page and handle auto-login or show login form.
      */
-    private suspend fun proceedToCaptivePortal(redirectHint: String? = null) {
-        handlePortalPageResult(fetchCaptivePortalLoginPage(redirectHint))
+    private suspend fun proceedToCaptivePortal(redirectHint: String? = null, isUserInitiated: Boolean = true) {
+        handlePortalPageResult(fetchCaptivePortalLoginPage(redirectHint), isUserInitiated = isUserInitiated)
     }
 
     private suspend fun fetchCaptivePortalLoginPage(redirectHint: String? = null): PageFetchResult {
@@ -161,16 +241,23 @@ class MainViewModel(
         return portalClient.fetchLoginPage(portalUrl)
     }
 
-    private suspend fun handlePortalPageResult(pageResult: PageFetchResult) {
+    private suspend fun handlePortalPageResult(pageResult: PageFetchResult, isUserInitiated: Boolean = true) {
+        val currentState = _uiState.value
+        val isModal = currentState is MainUiState.AdvancedSettings || currentState is MainUiState.About
+
         when (pageResult) {
             is PageFetchResult.Error -> {
-                _uiState.value = MainUiState.NotOnGuestNetwork(
-                    errorMessage = pageResult.message
-                )
+                AppLogger.w("VIEW_MODEL", "Portal page fetch returned error: ${pageResult.message}")
+                val errorState = MainUiState.NotOnGuestNetwork(errorMessage = pageResult.message)
+                if (isModal) {
+                    updateModalPreviousState(errorState)
+                } else {
+                    _uiState.value = errorState
+                }
             }
             is PageFetchResult.Success -> {
                 if (preferencesManager.hasSavedCredentials()) {
-                    // Auto-submit with saved credentials
+                    AppLogger.i("VIEW_MODEL", "Saved credentials found for user '${preferencesManager.username}'. Initiating automatic login.")
                     lastSubmittedUser = preferencesManager.username
                     lastSubmittedPass = preferencesManager.password
                     lastSubmittedRememberMe = preferencesManager.rememberMe
@@ -181,16 +268,22 @@ class MainViewModel(
                         password = lastSubmittedPass,
                         timeTag = pageResult.timeTag,
                         redirectUrl = pageResult.redirectUrl,
-                        rememberMe = lastSubmittedRememberMe
+                        rememberMe = lastSubmittedRememberMe,
+                        isUserInitiated = isUserInitiated
                     )
                 } else {
-                    // Show login form
-                    _uiState.value = MainUiState.LoginForm(
+                    AppLogger.i("VIEW_MODEL", "No saved credentials found. Transitioning to LoginForm.")
+                    val formState = MainUiState.LoginForm(
                         username = preferencesManager.username,
-                        password = "",
+                        password = preferencesManager.password,
                         rememberMe = preferencesManager.rememberMe,
                         errorMessage = null
                     )
+                    if (isModal) {
+                        updateModalPreviousState(formState)
+                    } else {
+                        _uiState.value = formState
+                    }
                 }
             }
         }
@@ -228,6 +321,7 @@ class MainViewModel(
         loginJob?.cancel()
         loginJob = viewModelScope.launch {
             _uiState.value = MainUiState.Connecting("Connecting to portal…", isTakingLong = false)
+            _isBackgroundChecking.value = false
 
             try {
                 val portalUrl = preferencesManager.portalUrl
@@ -247,11 +341,13 @@ class MainViewModel(
                             password = pass,
                             timeTag = pageResult.timeTag,
                             redirectUrl = pageResult.redirectUrl,
-                            rememberMe = remember
+                            rememberMe = remember,
+                            isUserInitiated = true
                         )
                     }
                 }
             } catch (e: Exception) {
+                AppLogger.e("VIEW_MODEL", "Exception in submitLoginForm: ${e.localizedMessage}", e)
                 _uiState.value = MainUiState.LoginForm(
                     username = trimmedUser,
                     password = pass,
@@ -268,9 +364,18 @@ class MainViewModel(
         password: String,
         timeTag: String,
         redirectUrl: String,
-        rememberMe: Boolean
+        rememberMe: Boolean,
+        isUserInitiated: Boolean = true
     ) {
-        _uiState.value = MainUiState.Connecting("Logging in…", isTakingLong = false)
+        val currentState = _uiState.value
+        val isModal = currentState is MainUiState.AdvancedSettings || currentState is MainUiState.About
+
+        if (isUserInitiated && !isModal) {
+            _uiState.value = MainUiState.Connecting("Logging in…", isTakingLong = false)
+        } else {
+            _isBackgroundChecking.value = true
+            _backgroundStatusMessage.value = "Signing in to portal…"
+        }
 
         var slowJob: Job? = null
         slowJob = viewModelScope.launch {
@@ -289,23 +394,50 @@ class MainViewModel(
                 redirectUrl = redirectUrl
             )
         } catch (e: Exception) {
-            LoginSubmitResult.Failed("Login attempt failed. Please check connection and try again.")
+            AppLogger.e("VIEW_MODEL", "executeLogin exception: ${e.localizedMessage}", e)
+            LoginSubmitResult.NetworkFailed("Network error during submission: ${e.localizedMessage ?: "Please try again."}")
         }
 
         slowJob.cancel()
+        _isBackgroundChecking.value = false
 
         when (submitResult) {
             is LoginSubmitResult.Success -> {
+                AppLogger.i("VIEW_MODEL", "Login succeeded for '$username'. Saving credentials.")
                 preferencesManager.saveCredentials(username, password, rememberMe)
-                _uiState.value = MainUiState.Success
+                if (isModal) {
+                    updateModalPreviousState(MainUiState.Success)
+                } else {
+                    _uiState.value = MainUiState.Success
+                }
             }
-            is LoginSubmitResult.Failed -> {
-                // Wipe saved credentials per spec on failure, retain username in prefs
-                preferencesManager.clearSavedCredentials()
-                _uiState.value = MainUiState.LoginFailed(
+            is LoginSubmitResult.AuthFailed -> {
+                AppLogger.w("VIEW_MODEL", "Authentication rejected by portal: ${submitResult.message}. Returning to LoginForm with prefilled credentials.")
+                // Return directly to LoginForm with BOTH username and password prefilled so user can fix typo easily!
+                val formState = MainUiState.LoginForm(
+                    username = username,
+                    password = password,
+                    rememberMe = rememberMe,
+                    errorMessage = submitResult.message
+                )
+                if (isModal) {
+                    updateModalPreviousState(formState)
+                } else {
+                    _uiState.value = formState
+                }
+            }
+            is LoginSubmitResult.NetworkFailed -> {
+                AppLogger.w("VIEW_MODEL", "Network / timeout issue during login: ${submitResult.message}. Credentials remain safe.")
+                // For network/timeout issues, show LoginFailed with option to retry, keeping credentials safe
+                val failedState = MainUiState.LoginFailed(
                     errorMessage = submitResult.message,
                     savedUsername = username
                 )
+                if (isModal) {
+                    updateModalPreviousState(failedState)
+                } else {
+                    _uiState.value = failedState
+                }
             }
         }
     }
@@ -340,11 +472,13 @@ class MainViewModel(
                                 password = lastSubmittedPass,
                                 timeTag = pageResult.timeTag,
                                 redirectUrl = pageResult.redirectUrl,
-                                rememberMe = lastSubmittedRememberMe
+                                rememberMe = lastSubmittedRememberMe,
+                                isUserInitiated = true
                             )
                         }
                     }
                 } catch (e: Exception) {
+                    AppLogger.e("VIEW_MODEL", "Exception in retryLastSubmittedCredentials: ${e.localizedMessage}", e)
                     _uiState.value = MainUiState.LoginFailed(
                         errorMessage = "Connection error during retry. Please try again.",
                         savedUsername = lastSubmittedUser
@@ -357,14 +491,14 @@ class MainViewModel(
     }
 
     /**
-     * Secondary action on Login Failed: Navigate to Login Form with error banner and username retained.
+     * Secondary action on Login Failed: Navigate to Login Form with error banner and credentials prefilled.
      */
     fun editCredentials(savedUsername: String) {
         _uiState.value = MainUiState.LoginForm(
             username = savedUsername.ifBlank { preferencesManager.username },
-            password = "",
-            rememberMe = true,
-            errorMessage = "Wrong username or password. Try again."
+            password = if (lastSubmittedPass.isNotBlank()) lastSubmittedPass else preferencesManager.password,
+            rememberMe = lastSubmittedRememberMe,
+            errorMessage = "Check your credentials and try again."
         )
     }
 
@@ -383,23 +517,31 @@ class MainViewModel(
             hasSavedCredentials = hasSavedCreds,
             isDefault = isDefault,
             errorMessage = null,
+            successMessage = null,
+            logCount = AppLogger.logCount.value,
             previousState = currentState
         )
     }
 
     /**
-     * Clears stored login credentials from preferences.
+     * Clears stored login credentials from preferences and reset memory cache explicitly.
      */
     fun clearSavedCredentials() {
         preferencesManager.clearSavedCredentials()
+        lastSubmittedUser = ""
+        lastSubmittedPass = ""
+        lastSubmittedRememberMe = true
         val currentSettings = _uiState.value as? MainUiState.AdvancedSettings
         if (currentSettings != null) {
-            _uiState.value = currentSettings.copy(hasSavedCredentials = false)
+            _uiState.value = currentSettings.copy(
+                hasSavedCredentials = false,
+                successMessage = "Saved credentials cleared from this device."
+            )
         }
     }
 
     /**
-     * Validates and saves customized Portal URL and preferences in Advanced Settings, then triggers fresh check.
+     * Validates and saves customized Portal URL and preferences in Advanced Settings without forced navigation.
      */
     fun saveAdvancedSettings(newUrl: String, checkInternetOnStartup: Boolean = true) {
         val cleanedUrl = newUrl.trim()
@@ -411,7 +553,8 @@ class MainViewModel(
                 _uiState.value = currentSettings.copy(
                     portalUrl = cleanedUrl,
                     checkInternetOnStartup = checkInternetOnStartup,
-                    errorMessage = "Please enter a valid URL starting with http:// or https://"
+                    errorMessage = "Please enter a valid URL starting with http:// or https://",
+                    successMessage = null
                 )
             }
             return
@@ -419,16 +562,41 @@ class MainViewModel(
 
         preferencesManager.portalUrl = cleanedUrl
         preferencesManager.checkInternetOnStartup = checkInternetOnStartup
-        startConnectionCheck()
+        val isDefault = cleanedUrl == PreferencesManager.DEFAULT_PORTAL_URL
+
+        val currentSettings = _uiState.value as? MainUiState.AdvancedSettings
+        if (currentSettings != null) {
+            _uiState.value = currentSettings.copy(
+                portalUrl = cleanedUrl,
+                checkInternetOnStartup = checkInternetOnStartup,
+                isDefault = isDefault,
+                errorMessage = null,
+                successMessage = "Settings saved successfully."
+            )
+        }
+
+        startConnectionCheck(isUserInitiated = false)
     }
 
     /**
-     * Resets Portal URL and preferences to default and triggers fresh check.
+     * Resets Portal URL and preferences to default without forced page dismissal.
      */
     fun resetAdvancedSettingsToDefault() {
         preferencesManager.resetPortalUrl()
         preferencesManager.checkInternetOnStartup = true
-        startConnectionCheck()
+
+        val currentSettings = _uiState.value as? MainUiState.AdvancedSettings
+        if (currentSettings != null) {
+            _uiState.value = currentSettings.copy(
+                portalUrl = PreferencesManager.DEFAULT_PORTAL_URL,
+                checkInternetOnStartup = true,
+                isDefault = true,
+                errorMessage = null,
+                successMessage = "Settings restored to defaults."
+            )
+        }
+
+        startConnectionCheck(isUserInitiated = false)
     }
 
     /**
@@ -455,6 +623,51 @@ class MainViewModel(
         val previous = (_uiState.value as? MainUiState.About)?.previousState
             ?: MainUiState.CheckingConnection()
         _uiState.value = previous
+    }
+
+    /**
+     * Exports logs via Android native share sheet using .log file format.
+     */
+    fun exportLogs(context: Context) {
+        try {
+            val file = AppLogger.prepareExportFile(context)
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, "WifiAuto Diagnostic Logs (${file.name})")
+                putExtra(Intent.EXTRA_TEXT, "WifiAuto Captive Portal diagnostic log export (${file.name}) attached.")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            val chooser = Intent.createChooser(shareIntent, "Export Diagnostic Logs (${file.name})").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(chooser)
+            AppLogger.i("VIEW_MODEL", "Export logs share sheet launched for file: ${file.name}")
+        } catch (e: Exception) {
+            AppLogger.e("VIEW_MODEL", "Failed to launch log export share sheet: ${e.localizedMessage}", e)
+        }
+    }
+
+    /**
+     * Clears all recorded diagnostic logs.
+     */
+    fun clearLogs(context: Context) {
+        AppLogger.clearLogs(context)
+        val currentSettings = _uiState.value as? MainUiState.AdvancedSettings
+        if (currentSettings != null) {
+            _uiState.value = currentSettings.copy(
+                logCount = 0,
+                successMessage = "Logs cleared successfully."
+            )
+        }
     }
 
     override fun onCleared() {

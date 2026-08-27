@@ -1,7 +1,9 @@
 package com.mgeni.autologin
 
 import com.mgeni.autologin.data.ConnectivityResult
+import com.mgeni.autologin.data.LoginSubmitResult
 import com.mgeni.autologin.data.NetworkMonitor
+import com.mgeni.autologin.data.PageFetchResult
 import com.mgeni.autologin.data.PortalClient
 import com.mgeni.autologin.data.PreferencesManager
 import com.mgeni.autologin.ui.viewmodel.MainUiState
@@ -15,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -146,9 +149,9 @@ class MainViewModelTest {
                 return ConnectivityResult.AlreadyConnected
             }
 
-            override suspend fun fetchLoginPage(portalUrl: String): com.mgeni.autologin.data.PageFetchResult {
+            override suspend fun fetchLoginPage(portalUrl: String): PageFetchResult {
                 fetchPageCalled = true
-                return com.mgeni.autologin.data.PageFetchResult.Success(
+                return PageFetchResult.Success(
                     timeTag = "956629188",
                     actionUrl = "http://10.10.10.10/login.html",
                     redirectUrl = ""
@@ -214,6 +217,123 @@ class MainViewModelTest {
     }
 
     @Test
+    fun `auth failure transitions directly to LoginForm with BOTH username and password prefilled`() = runTest(testDispatcher) {
+        preferencesManager.saveCredentials("john_doe", "secret_pass_123", remember = true)
+        assertTrue(preferencesManager.hasSavedCredentials())
+
+        val fakeClient = object : PortalClient() {
+            override suspend fun check204Connectivity(connectivityUrl: String): ConnectivityResult {
+                return ConnectivityResult.CaptiveDetected(null)
+            }
+
+            override suspend fun fetchLoginPage(portalUrl: String): PageFetchResult {
+                return PageFetchResult.Success(
+                    timeTag = "123456",
+                    actionUrl = "http://10.10.10.10/login.html",
+                    redirectUrl = ""
+                )
+            }
+
+            override suspend fun submitLogin(
+                actionUrl: String,
+                username: String,
+                password: String,
+                timeTag: String,
+                redirectUrl: String,
+                connectivityUrl: String
+            ): LoginSubmitResult {
+                return LoginSubmitResult.AuthFailed("Wrong username or password. Check your details and try again.")
+            }
+        }
+
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+
+        // State should return directly to LoginForm
+        val state = viewModel.uiState.value
+        assertTrue("Expected LoginForm on auth failure, got $state", state is MainUiState.LoginForm)
+        val loginForm = state as MainUiState.LoginForm
+
+        // Password MUST be prefilled so user can easily fix typos
+        assertEquals("john_doe", loginForm.username)
+        assertEquals("secret_pass_123", loginForm.password)
+        assertTrue(loginForm.errorMessage!!.contains("Wrong username or password"))
+
+        // Saved credentials must remain persistent in PreferencesManager
+        assertTrue("Credentials must remain stored", preferencesManager.hasSavedCredentials())
+    }
+
+    @Test
+    fun `network failure during login preserves credentials and transitions to LoginFailed retry view`() = runTest(testDispatcher) {
+        preferencesManager.saveCredentials("john_doe", "secret_pass_123", remember = true)
+
+        val fakeClient = object : PortalClient() {
+            override suspend fun check204Connectivity(connectivityUrl: String): ConnectivityResult {
+                return ConnectivityResult.CaptiveDetected(null)
+            }
+
+            override suspend fun fetchLoginPage(portalUrl: String): PageFetchResult {
+                return PageFetchResult.Success(
+                    timeTag = "123456",
+                    actionUrl = "http://10.10.10.10/login.html",
+                    redirectUrl = ""
+                )
+            }
+
+            override suspend fun submitLogin(
+                actionUrl: String,
+                username: String,
+                password: String,
+                timeTag: String,
+                redirectUrl: String,
+                connectivityUrl: String
+            ): LoginSubmitResult {
+                return LoginSubmitResult.NetworkFailed("Could not reach portal during submission.")
+            }
+        }
+
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue("Expected LoginFailed on network error, got $state", state is MainUiState.LoginFailed)
+        assertEquals("john_doe", (state as MainUiState.LoginFailed).savedUsername)
+        assertTrue(preferencesManager.hasSavedCredentials())
+    }
+
+    @Test
+    fun `saveAdvancedSettings preserves settings screen and displays success message`() = runTest(testDispatcher) {
+        val fakeClient = FakePortalClient(ConnectivityResult.AlreadyConnected)
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        viewModel.openAdvancedSettings()
+        assertTrue(viewModel.uiState.value is MainUiState.AdvancedSettings)
+
+        viewModel.saveAdvancedSettings("http://192.168.1.1/login.html", checkInternetOnStartup = false)
+        advanceUntilIdle()
+
+        val settingsState = viewModel.uiState.value as MainUiState.AdvancedSettings
+        assertEquals("http://192.168.1.1/login.html", preferencesManager.portalUrl)
+        assertFalse(preferencesManager.checkInternetOnStartup)
+        assertEquals("Settings saved successfully.", settingsState.successMessage)
+    }
+
+    @Test
     fun `unreachable connection check produces NotOnGuestNetwork advising guest and portal URL`() = runTest(testDispatcher) {
         val fakeClient = FakePortalClient(ConnectivityResult.Unreachable("Network unreachable"))
         val viewModel = MainViewModel(
@@ -228,5 +348,122 @@ class MainViewModelTest {
         val errorMsg = (state as MainUiState.NotOnGuestNetwork).errorMessage
         assertTrue("Expected message to mention 'guest', got $errorMsg", errorMsg.contains("guest", ignoreCase = true))
         assertTrue("Expected message to mention portal URL or Settings, got $errorMsg", errorMsg.contains("portal URL", ignoreCase = true) || errorMsg.contains("Settings", ignoreCase = true))
+    }
+
+    @Test
+    fun `pull to refresh on LoginForm transitions to AlreadyConnected when 204 check succeeds`() = runTest(testDispatcher) {
+        var clientResult: ConnectivityResult = ConnectivityResult.CaptiveDetected(null)
+        val fakeClient = object : PortalClient() {
+            override suspend fun check204Connectivity(connectivityUrl: String): ConnectivityResult = clientResult
+            override suspend fun fetchLoginPage(portalUrl: String): PageFetchResult = PageFetchResult.Success("123", "http://10.10.10.10/login.html", "")
+        }
+
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        assertTrue("Expected LoginForm initially, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.LoginForm)
+
+        // Internet becomes active, user pulls to refresh
+        clientResult = ConnectivityResult.AlreadyConnected
+        viewModel.startConnectionCheck(isUserInitiated = true)
+        advanceUntilIdle()
+
+        assertTrue("Expected AlreadyConnected after pull to refresh, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.AlreadyConnected)
+    }
+
+    @Test
+    fun `pull to refresh on AlreadyConnected transitions to NotOnGuestNetwork when connection is lost`() = runTest(testDispatcher) {
+        var clientResult: ConnectivityResult = ConnectivityResult.AlreadyConnected
+        val fakeClient = object : PortalClient() {
+            override suspend fun check204Connectivity(connectivityUrl: String): ConnectivityResult = clientResult
+        }
+
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value is MainUiState.AlreadyConnected)
+
+        // Connection is lost, user pulls to refresh
+        clientResult = ConnectivityResult.Unreachable("No Wi-Fi")
+        viewModel.startConnectionCheck(isUserInitiated = true)
+        advanceUntilIdle()
+
+        assertTrue("Expected NotOnGuestNetwork, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.NotOnGuestNetwork)
+    }
+
+    @Test
+    fun `editCredentials preserves rememberMe false preference`() = runTest(testDispatcher) {
+        val fakeClient = FakePortalClient(ConnectivityResult.AlreadyConnected)
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        // Submit with rememberMe = false
+        preferencesManager.rememberMe = false
+        viewModel.submitLoginForm("testuser", "testpass", remember = false)
+        viewModel.editCredentials("testuser")
+
+        val state = viewModel.uiState.value
+        assertTrue(state is MainUiState.LoginForm)
+        assertFalse("rememberMe should remain false", (state as MainUiState.LoginForm).rememberMe)
+    }
+
+    @Test
+    fun `clearSavedCredentials resets retry in-memory credentials`() = runTest(testDispatcher) {
+        val fakeClient = FakePortalClient(ConnectivityResult.AlreadyConnected)
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        viewModel.submitLoginForm("testuser", "testpass", remember = true)
+        viewModel.clearSavedCredentials()
+
+        // Attempting retry after clear should fallback to editing credentials with empty fields
+        viewModel.retryLastSubmittedCredentials()
+        val state = viewModel.uiState.value
+        assertTrue(state is MainUiState.LoginForm)
+        assertEquals("", (state as MainUiState.LoginForm).username)
+        assertEquals("", (state as MainUiState.LoginForm).password)
+    }
+
+    @Test
+    fun `dismissAdvancedSettings restores updated state after successful settings save`() = runTest(testDispatcher) {
+        var clientResult: ConnectivityResult = ConnectivityResult.Unreachable("Initial failure")
+        val fakeClient = object : PortalClient() {
+            override suspend fun check204Connectivity(connectivityUrl: String): ConnectivityResult = clientResult
+        }
+
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value is MainUiState.NotOnGuestNetwork)
+
+        // Open settings, change URL, and save with successful 204
+        viewModel.openAdvancedSettings()
+        clientResult = ConnectivityResult.AlreadyConnected
+        viewModel.saveAdvancedSettings("http://10.10.10.10/login.html")
+        advanceUntilIdle()
+
+        // Dismissing settings should return to AlreadyConnected, not the old NotOnGuestNetwork
+        viewModel.dismissAdvancedSettings()
+        assertTrue("Expected AlreadyConnected after save and dismiss, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.AlreadyConnected)
     }
 }

@@ -10,14 +10,17 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
+import com.mgeni.autologin.ui.components.BackgroundLoadingIndicator
 import com.mgeni.autologin.ui.screens.AboutScreen
 import com.mgeni.autologin.ui.screens.AdvancedSettingsScreen
 import com.mgeni.autologin.ui.screens.AlreadyConnectedScreen
@@ -50,160 +53,184 @@ fun MgeniApp(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val networkState by viewModel.networkState.collectAsState()
+    val isBackgroundChecking by viewModel.isBackgroundChecking.collectAsState()
+    val backgroundStatusMessage by viewModel.backgroundStatusMessage.collectAsState()
+    val logCount by viewModel.logCount.collectAsState()
 
-    AnimatedContent(
-        targetState = uiState,
-        transitionSpec = {
-            val isSameScreenType = initialState::class == targetState::class
-            val isCheckingOrConnecting = targetState is MainUiState.CheckingConnection ||
-                initialState is MainUiState.CheckingConnection ||
-                targetState is MainUiState.Connecting ||
-                initialState is MainUiState.Connecting
+    Box(modifier = modifier.fillMaxSize()) {
+        AnimatedContent(
+            targetState = uiState,
+            transitionSpec = {
+                val isSameScreenType = initialState::class == targetState::class
+                val isCheckingOrConnecting = targetState is MainUiState.CheckingConnection ||
+                    initialState is MainUiState.CheckingConnection ||
+                    targetState is MainUiState.Connecting ||
+                    initialState is MainUiState.Connecting
 
-            if (isSameScreenType) {
-                androidx.compose.animation.EnterTransition.None
-                    .togetherWith(androidx.compose.animation.ExitTransition.None)
-            } else if (isCheckingOrConnecting) {
-                fadeIn(animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing))
-                    .togetherWith(fadeOut(animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)))
-            } else {
-                val isForward = targetState.screenOrder() >= initialState.screenOrder()
-                val fadeSpec = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
-                val offsetSpec = tween<IntOffset>(durationMillis = 320, easing = FastOutSlowInEasing)
-
-                if (isForward) {
-                    (slideInHorizontally(animationSpec = offsetSpec) { fullWidth -> fullWidth } + fadeIn(animationSpec = fadeSpec))
-                        .togetherWith(slideOutHorizontally(animationSpec = offsetSpec) { fullWidth -> -fullWidth / 3 } + fadeOut(animationSpec = fadeSpec))
+                if (isSameScreenType) {
+                    androidx.compose.animation.EnterTransition.None
+                        .togetherWith(androidx.compose.animation.ExitTransition.None)
+                } else if (isCheckingOrConnecting) {
+                    fadeIn(animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing))
+                        .togetherWith(fadeOut(animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)))
                 } else {
-                    (slideInHorizontally(animationSpec = offsetSpec) { fullWidth -> -fullWidth / 3 } + fadeIn(animationSpec = fadeSpec))
-                        .togetherWith(slideOutHorizontally(animationSpec = offsetSpec) { fullWidth -> fullWidth } + fadeOut(animationSpec = fadeSpec))
+                    val isForward = targetState.screenOrder() >= initialState.screenOrder()
+                    val fadeSpec = tween<Float>(durationMillis = 280, easing = FastOutSlowInEasing)
+                    val offsetSpec = tween<IntOffset>(durationMillis = 320, easing = FastOutSlowInEasing)
+
+                    if (isForward) {
+                        (slideInHorizontally(animationSpec = offsetSpec) { fullWidth -> fullWidth } + fadeIn(animationSpec = fadeSpec))
+                            .togetherWith(slideOutHorizontally(animationSpec = offsetSpec) { fullWidth -> -fullWidth / 3 } + fadeOut(animationSpec = fadeSpec))
+                    } else {
+                        (slideInHorizontally(animationSpec = offsetSpec) { fullWidth -> -fullWidth / 3 } + fadeIn(animationSpec = fadeSpec))
+                            .togetherWith(slideOutHorizontally(animationSpec = offsetSpec) { fullWidth -> fullWidth } + fadeOut(animationSpec = fadeSpec))
+                    }
                 }
-            }
-        },
-        label = "ScreenTransition",
-        modifier = modifier
-            .fillMaxSize()
-            .navigationBarsPadding()
-    ) { state ->
-        when (state) {
-            is MainUiState.CheckingConnection -> {
-                SplashScreen(
-                    isTakingLong = state.isTakingLong,
-                    onSettingsClick = { viewModel.openAdvancedSettings() },
-                    onAboutClick = { viewModel.openAbout() }
-                )
-            }
-
-            is MainUiState.AlreadyConnected -> {
-                AlreadyConnectedScreen(
-                    networkState = networkState,
-                    onCloseClick = { (context as? Activity)?.finish() },
-                    onSettingsClick = { viewModel.openAdvancedSettings() },
-                    onAboutClick = { viewModel.openAbout() },
-                    onRefresh = { viewModel.startConnectionCheck() }
-                )
-            }
-
-            is MainUiState.NotOnGuestNetwork -> {
-                NotOnGuestScreen(
-                    errorMessage = state.errorMessage,
-                    networkState = networkState,
-                    onRetryClick = { viewModel.startConnectionCheck() },
-                    onSettingsClick = { viewModel.openAdvancedSettings() },
-                    onAboutClick = { viewModel.openAbout() },
-                    onRefresh = { viewModel.startConnectionCheck() }
-                )
-            }
-
-            is MainUiState.LoginForm -> {
-                LoginScreen(
-                    initialUsername = state.username,
-                    initialPassword = state.password,
-                    initialRememberMe = state.rememberMe,
-                    errorMessage = state.errorMessage,
-                    networkState = networkState,
-                    onConnectClick = { username, password, rememberMe ->
-                        viewModel.submitLoginForm(username, password, rememberMe)
-                    },
-                    onSettingsClick = { viewModel.openAdvancedSettings() },
-                    onAboutClick = { viewModel.openAbout() },
-                    onRefresh = { viewModel.startConnectionCheck() }
-                )
-            }
-
-            is MainUiState.Connecting -> {
-                ConnectingScreen(
-                    statusMessage = state.statusMessage,
-                    isTakingLong = state.isTakingLong,
-                    onSettingsClick = { viewModel.openAdvancedSettings() },
-                    onAboutClick = { viewModel.openAbout() }
-                )
-            }
-
-            is MainUiState.Success -> {
-                SuccessScreen(
-                    networkState = networkState,
-                    onCloseClick = { (context as? Activity)?.finish() },
-                    onSettingsClick = { viewModel.openAdvancedSettings() },
-                    onAboutClick = { viewModel.openAbout() },
-                    onRefresh = { viewModel.startConnectionCheck() }
-                )
-            }
-
-            is MainUiState.LoginFailed -> {
-                LoginFailedScreen(
-                    errorMessage = state.errorMessage,
-                    savedUsername = state.savedUsername,
-                    networkState = networkState,
-                    onTryAgainClick = {
-                        viewModel.retryLastSubmittedCredentials()
-                    },
-                    onEditCredentialsClick = { username ->
-                        viewModel.editCredentials(username)
-                    },
-                    onSettingsClick = { viewModel.openAdvancedSettings() },
-                    onAboutClick = { viewModel.openAbout() },
-                    onRefresh = { viewModel.startConnectionCheck() }
-                )
-            }
-
-            is MainUiState.AdvancedSettings -> {
-                BackHandler {
-                    viewModel.dismissAdvancedSettings()
+            },
+            label = "ScreenTransition",
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding()
+        ) { state ->
+            when (state) {
+                is MainUiState.CheckingConnection -> {
+                    SplashScreen(
+                        isTakingLong = state.isTakingLong,
+                        onSettingsClick = { viewModel.openAdvancedSettings() },
+                        onAboutClick = { viewModel.openAbout() }
+                    )
                 }
 
-                AdvancedSettingsScreen(
-                    currentPortalUrl = state.portalUrl,
-                    initialCheckInternetOnStartup = state.checkInternetOnStartup,
-                    hasSavedCredentials = state.hasSavedCredentials,
-                    errorMessage = state.errorMessage,
-                    onSaveClick = { newUrl, checkInternetOnStartup ->
-                        viewModel.saveAdvancedSettings(newUrl, checkInternetOnStartup)
-                    },
-                    onClearCredentialsClick = {
-                        viewModel.clearSavedCredentials()
-                    },
-                    onResetToDefaultClick = {
-                        viewModel.resetAdvancedSettingsToDefault()
-                    },
-                    onBackClick = {
+                is MainUiState.AlreadyConnected -> {
+                    AlreadyConnectedScreen(
+                        networkState = networkState,
+                        onCloseClick = { (context as? Activity)?.finish() },
+                        onSettingsClick = { viewModel.openAdvancedSettings() },
+                        onAboutClick = { viewModel.openAbout() },
+                        onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
+                        isRefreshing = isBackgroundChecking
+                    )
+                }
+
+                is MainUiState.NotOnGuestNetwork -> {
+                    NotOnGuestScreen(
+                        errorMessage = state.errorMessage,
+                        networkState = networkState,
+                        onRetryClick = { viewModel.startConnectionCheck(isUserInitiated = true) },
+                        onSettingsClick = { viewModel.openAdvancedSettings() },
+                        onAboutClick = { viewModel.openAbout() },
+                        onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
+                        isRefreshing = isBackgroundChecking
+                    )
+                }
+
+                is MainUiState.LoginForm -> {
+                    LoginScreen(
+                        initialUsername = state.username,
+                        initialPassword = state.password,
+                        initialRememberMe = state.rememberMe,
+                        errorMessage = state.errorMessage,
+                        networkState = networkState,
+                        onConnectClick = { username, password, rememberMe ->
+                            viewModel.submitLoginForm(username, password, rememberMe)
+                        },
+                        onSettingsClick = { viewModel.openAdvancedSettings() },
+                        onAboutClick = { viewModel.openAbout() },
+                        onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
+                        isRefreshing = isBackgroundChecking
+                    )
+                }
+
+                is MainUiState.Connecting -> {
+                    ConnectingScreen(
+                        statusMessage = state.statusMessage,
+                        isTakingLong = state.isTakingLong,
+                        onSettingsClick = { viewModel.openAdvancedSettings() },
+                        onAboutClick = { viewModel.openAbout() }
+                    )
+                }
+
+                is MainUiState.Success -> {
+                    SuccessScreen(
+                        networkState = networkState,
+                        onCloseClick = { (context as? Activity)?.finish() },
+                        onSettingsClick = { viewModel.openAdvancedSettings() },
+                        onAboutClick = { viewModel.openAbout() },
+                        onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
+                        isRefreshing = isBackgroundChecking
+                    )
+                }
+
+                is MainUiState.LoginFailed -> {
+                    LoginFailedScreen(
+                        errorMessage = state.errorMessage,
+                        savedUsername = state.savedUsername,
+                        networkState = networkState,
+                        onTryAgainClick = {
+                            viewModel.retryLastSubmittedCredentials()
+                        },
+                        onEditCredentialsClick = { username ->
+                            viewModel.editCredentials(username)
+                        },
+                        onSettingsClick = { viewModel.openAdvancedSettings() },
+                        onAboutClick = { viewModel.openAbout() },
+                        onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
+                        isRefreshing = isBackgroundChecking
+                    )
+                }
+
+                is MainUiState.AdvancedSettings -> {
+                    BackHandler {
                         viewModel.dismissAdvancedSettings()
                     }
-                )
-            }
 
-            is MainUiState.About -> {
-                BackHandler {
-                    viewModel.dismissAbout()
+                    AdvancedSettingsScreen(
+                        currentPortalUrl = state.portalUrl,
+                        initialCheckInternetOnStartup = state.checkInternetOnStartup,
+                        hasSavedCredentials = state.hasSavedCredentials,
+                        errorMessage = state.errorMessage,
+                        successMessage = state.successMessage,
+                        logCount = logCount,
+                        onSaveClick = { newUrl, checkInternetOnStartup ->
+                            viewModel.saveAdvancedSettings(newUrl, checkInternetOnStartup)
+                        },
+                        onClearCredentialsClick = {
+                            viewModel.clearSavedCredentials()
+                        },
+                        onResetToDefaultClick = {
+                            viewModel.resetAdvancedSettingsToDefault()
+                        },
+                        onExportLogsClick = {
+                            viewModel.exportLogs(context)
+                        },
+                        onClearLogsClick = {
+                            viewModel.clearLogs(context)
+                        },
+                        onBackClick = {
+                            viewModel.dismissAdvancedSettings()
+                        }
+                    )
                 }
 
-                AboutScreen(
-                    onBackClick = {
+                is MainUiState.About -> {
+                    BackHandler {
                         viewModel.dismissAbout()
                     }
-                )
+
+                    AboutScreen(
+                        onBackClick = {
+                            viewModel.dismissAbout()
+                        }
+                    )
+                }
             }
         }
+
+        // Overlay non-intrusive background loading indicator when background checking is active
+        BackgroundLoadingIndicator(
+            visible = isBackgroundChecking && uiState !is MainUiState.CheckingConnection && uiState !is MainUiState.Connecting,
+            message = backgroundStatusMessage,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }
-

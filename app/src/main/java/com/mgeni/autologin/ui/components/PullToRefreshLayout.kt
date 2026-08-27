@@ -16,13 +16,14 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 /**
  * Reusable Material 3 pull-to-refresh wrapper.
- * Ensures the entire screen surface captures pull gestures while preserving finite layout constraints for children.
+ * Ensures the screen surface captures intentional pull gestures without false triggers or scroll conflicts.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PullToRefreshLayout(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    isRefreshing: Boolean = false,
     content: @Composable BoxScope.() -> Unit
 ) {
     val pullRefreshState = rememberPullToRefreshState()
@@ -30,6 +31,11 @@ fun PullToRefreshLayout(
     if (pullRefreshState.isRefreshing) {
         LaunchedEffect(true) {
             onRefresh()
+        }
+    }
+
+    LaunchedEffect(isRefreshing) {
+        if (!isRefreshing && pullRefreshState.isRefreshing) {
             pullRefreshState.endRefresh()
         }
     }
@@ -37,7 +43,7 @@ fun PullToRefreshLayout(
     Box(
         modifier = modifier.nestedScroll(pullRefreshState.nestedScrollConnection)
     ) {
-        // Full-screen scroll handler so touch events anywhere on background trigger pull-to-refresh
+        // Transparent scroll target so non-scrollable screens always capture pull gestures
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -46,7 +52,7 @@ fun PullToRefreshLayout(
 
         content()
 
-        if (pullRefreshState.verticalOffset > 0f || pullRefreshState.isRefreshing) {
+        if (pullRefreshState.verticalOffset > 15f || pullRefreshState.isRefreshing || isRefreshing) {
             PullToRefreshContainer(
                 state = pullRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter)

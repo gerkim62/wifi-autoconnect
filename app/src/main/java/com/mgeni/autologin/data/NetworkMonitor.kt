@@ -19,7 +19,7 @@ enum class NetworkState {
 
 /**
  * Monitors active network interfaces (Wi-Fi, Cellular) in real-time to provide truthful,
- * dynamic connectivity states and warnings.
+ * dynamic connectivity states and warnings without false-positive jitter triggers.
  */
 open class NetworkMonitor(context: Context? = null) {
 
@@ -38,50 +38,62 @@ open class NetworkMonitor(context: Context? = null) {
     private val _wifiChangeCount = MutableStateFlow(0L)
     open val wifiChangeCount: StateFlow<Long> = _wifiChangeCount.asStateFlow()
 
+    private val _activeWifiNetwork = MutableStateFlow<Network?>(null)
+    open val activeWifiNetwork: StateFlow<Network?> = _activeWifiNetwork.asStateFlow()
+
     private val capabilitiesByNetwork = mutableMapOf<Network, NetworkCapabilities>()
+    private val linkPropertiesByNetwork = mutableMapOf<Network, LinkProperties>()
     private var lastWifiNetworks: Set<Network> = emptySet()
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            val capabilities = connectivityManager?.getNetworkCapabilities(network)
-            if (capabilities != null) {
-                updateCapabilities(network, capabilities)
-            } else {
-                updateNetworkStates()
+            AppLogger.d("NETWORK_MONITOR", "onAvailable: network=$network")
+            val cm = connectivityManager
+            val capabilities = cm?.getNetworkCapabilities(network)
+            val linkProperties = cm?.getLinkProperties(network)
+            synchronized(capabilitiesByNetwork) {
+                if (capabilities != null) capabilitiesByNetwork[network] = capabilities
+                if (linkProperties != null) linkPropertiesByNetwork[network] = linkProperties
             }
+            publishNetworkStates()
         }
 
         override fun onLost(network: Network) {
+            AppLogger.d("NETWORK_MONITOR", "onLost: network=$network")
             synchronized(capabilitiesByNetwork) {
                 capabilitiesByNetwork.remove(network)
-                publishNetworkStates()
+                linkPropertiesByNetwork.remove(network)
             }
+            publishNetworkStates()
         }
 
         override fun onCapabilitiesChanged(
             network: Network,
             networkCapabilities: NetworkCapabilities
         ) {
-            updateCapabilities(network, networkCapabilities)
-            if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                _wifiChangeCount.value += 1L
+            synchronized(capabilitiesByNetwork) {
+                capabilitiesByNetwork[network] = networkCapabilities
             }
+            publishNetworkStates()
         }
 
         override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
-            val capabilities = capabilitiesByNetwork[network] ?: connectivityManager?.getNetworkCapabilities(network)
-            if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
-                _wifiChangeCount.value += 1L
+            AppLogger.d("NETWORK_MONITOR", "onLinkPropertiesChanged: network=$network, ipCount=${linkProperties.linkAddresses.size}")
+            synchronized(capabilitiesByNetwork) {
+                linkPropertiesByNetwork[network] = linkProperties
             }
+            publishNetworkStates()
         }
     }
 
     private val defaultNetworkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
+            AppLogger.d("NETWORK_MONITOR", "defaultNetwork onAvailable: network=$network")
             publishNetworkStates()
         }
 
         override fun onLost(network: Network) {
+            AppLogger.d("NETWORK_MONITOR", "defaultNetwork onLost: network=$network")
             publishNetworkStates()
         }
 
@@ -100,11 +112,14 @@ open class NetworkMonitor(context: Context? = null) {
 
     private fun register() {
         try {
-            val request = NetworkRequest.Builder().build()
+            val request = NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                .build()
             connectivityManager?.registerNetworkCallback(request, networkCallback)
             connectivityManager?.registerDefaultNetworkCallback(defaultNetworkCallback)
-        } catch (_: Exception) {
-            // Ignore if restricted or unavailable
+        } catch (e: Exception) {
+            AppLogger.w("NETWORK_MONITOR", "Failed to register network callbacks: ${e.localizedMessage}", e)
         }
     }
 
@@ -112,48 +127,48 @@ open class NetworkMonitor(context: Context? = null) {
         try {
             connectivityManager?.unregisterNetworkCallback(networkCallback)
             connectivityManager?.unregisterNetworkCallback(defaultNetworkCallback)
-        } catch (_: Exception) {
-            // Ignore unregister errors on destroy
+        } catch (e: Exception) {
+            AppLogger.w("NETWORK_MONITOR", "Failed to unregister network callbacks: ${e.localizedMessage}", e)
         }
     }
 
     fun updateNetworkStates() {
         val cm = connectivityManager ?: return
-        val snapshot = try {
-            cm.allNetworks.mapNotNull { network ->
-                cm.getNetworkCapabilities(network)?.let { network to it }
+        val capSnapshot = mutableMapOf<Network, NetworkCapabilities>()
+        val linkSnapshot = mutableMapOf<Network, LinkProperties>()
+
+        try {
+            cm.allNetworks.forEach { network ->
+                cm.getNetworkCapabilities(network)?.let { capSnapshot[network] = it }
+                cm.getLinkProperties(network)?.let { linkSnapshot[network] = it }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            AppLogger.w("NETWORK_MONITOR", "Failed to query allNetworks, falling back to activeNetwork: ${e.localizedMessage}", e)
             cm.activeNetwork?.let { network ->
-                cm.getNetworkCapabilities(network)?.let { capabilities ->
-                    listOf(network to capabilities)
-                }
-            }.orEmpty()
+                cm.getNetworkCapabilities(network)?.let { capSnapshot[network] = it }
+                cm.getLinkProperties(network)?.let { linkSnapshot[network] = it }
+            }
         }
 
         synchronized(capabilitiesByNetwork) {
             capabilitiesByNetwork.clear()
-            capabilitiesByNetwork.putAll(snapshot)
-            publishNetworkStates()
+            capabilitiesByNetwork.putAll(capSnapshot)
+            linkPropertiesByNetwork.clear()
+            linkPropertiesByNetwork.putAll(linkSnapshot)
         }
-    }
-
-    private fun updateCapabilities(network: Network, capabilities: NetworkCapabilities) {
-        synchronized(capabilitiesByNetwork) {
-            capabilitiesByNetwork[network] = capabilities
-            publishNetworkStates()
-        }
+        publishNetworkStates()
     }
 
     private fun publishNetworkStates() {
-        val cm = connectivityManager
-        val activeNet = cm?.activeNetwork
-        val activeCaps = activeNet?.let { cm.getNetworkCapabilities(it) }
-
-        val wifiNetworks = capabilitiesByNetwork.filter { (_, capabilities) ->
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
-        }.keys
+        val wifiNetworks = synchronized(capabilitiesByNetwork) {
+            capabilitiesByNetwork.filter { (net, capabilities) ->
+                val lp = linkPropertiesByNetwork[net]
+                val hasIpConfig = lp == null || lp.linkAddresses.isNotEmpty()
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED) &&
+                    hasIpConfig
+            }.keys
+        }
 
         val hasWifi = wifiNetworks.isNotEmpty()
         val hasCellular = capabilitiesByNetwork.values.any { capabilities ->
@@ -162,29 +177,34 @@ open class NetworkMonitor(context: Context? = null) {
                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
         }
 
-        // Only treat cellular as actively competing if Android is currently routing traffic over cellular
-        val isCellularActiveRoute = activeCaps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
-
         if (wifiNetworks != lastWifiNetworks) {
+            AppLogger.i("NETWORK_MONITOR", "Wi-Fi network set changed from $lastWifiNetworks to $wifiNetworks (hasWifi=$hasWifi)")
             lastWifiNetworks = wifiNetworks.toSet()
             _wifiChangeCount.value += 1L
         }
 
+        _activeWifiNetwork.value = wifiNetworks.firstOrNull()
         _isCellularActive.value = hasCellular
         _isWifiActive.value = hasWifi
-        _networkState.value = when {
-            hasWifi && hasCellular && isCellularActiveRoute -> NetworkState.BothWifiAndCellular
+        val newState = when {
+            hasWifi && hasCellular -> NetworkState.BothWifiAndCellular
             hasWifi -> NetworkState.OnlyWifi
             hasCellular -> NetworkState.OnlyCellular
             else -> NetworkState.Offline
+        }
+
+        if (_networkState.value != newState) {
+            AppLogger.i("NETWORK_MONITOR", "NetworkState transitioned: ${_networkState.value} -> $newState (wifi=$hasWifi, cell=$hasCellular)")
+            _networkState.value = newState
         }
     }
 
     /**
      * Testing hook to simulate network interface state transitions without Android Framework dependencies.
      */
-    fun emitNetworkStateForTesting(hasWifi: Boolean, hasCellular: Boolean) {
+    fun emitNetworkStateForTesting(hasWifi: Boolean, hasCellular: Boolean, network: Network? = null) {
         _isCellularActive.value = hasCellular
+        _activeWifiNetwork.value = if (hasWifi) network else null
         val wifiChanged = _isWifiActive.value != hasWifi
         _isWifiActive.value = hasWifi
         _networkState.value = when {

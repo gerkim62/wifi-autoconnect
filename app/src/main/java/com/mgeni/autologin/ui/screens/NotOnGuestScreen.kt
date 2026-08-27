@@ -39,6 +39,7 @@ fun NotOnGuestScreen(
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
     onRefresh: () -> Unit = onRetryClick,
+    isRefreshing: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val isOnlyCellular = networkState == NetworkState.OnlyCellular
@@ -75,6 +76,7 @@ fun NotOnGuestScreen(
     ) { innerPadding ->
         PullToRefreshLayout(
             onRefresh = onRefresh,
+            isRefreshing = isRefreshing,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)

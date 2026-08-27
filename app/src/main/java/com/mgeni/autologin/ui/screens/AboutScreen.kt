@@ -72,8 +72,8 @@ fun AboutScreen(
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-        } catch (_: Exception) {
-            // Handled gracefully if no browser/app is available
+        } catch (e: Exception) {
+            com.mgeni.autologin.data.AppLogger.w("ABOUT_SCREEN", "Could not open URL '$url': ${e.localizedMessage}", e)
         }
     }
 

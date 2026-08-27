@@ -1,7 +1,7 @@
 package com.mgeni.autologin.ui.viewmodel
 
 sealed interface MainUiState {
-    // 1. Splash / Checking connection screen
+    // 1. Splash / Initial Checking connection screen (Foreground launch / manual retry)
     data class CheckingConnection(
         val isTakingLong: Boolean = false
     ) : MainUiState
@@ -45,6 +45,8 @@ sealed interface MainUiState {
         val hasSavedCredentials: Boolean = false,
         val isDefault: Boolean = true,
         val errorMessage: String? = null,
+        val successMessage: String? = null,
+        val logCount: Int = 0,
         val previousState: MainUiState? = null
     ) : MainUiState
 

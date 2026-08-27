@@ -34,6 +34,7 @@ fun AlreadyConnectedScreen(
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
     onRefresh: () -> Unit = {},
+    isRefreshing: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -48,6 +49,7 @@ fun AlreadyConnectedScreen(
     ) { innerPadding ->
         PullToRefreshLayout(
             onRefresh = onRefresh,
+            isRefreshing = isRefreshing,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)

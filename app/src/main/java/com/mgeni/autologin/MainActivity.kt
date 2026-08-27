@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.mgeni.autologin.data.AppLogger
 import com.mgeni.autologin.data.NetworkMonitor
 import com.mgeni.autologin.data.PortalClient
 import com.mgeni.autologin.data.PreferencesManager
@@ -16,18 +17,16 @@ import com.mgeni.autologin.ui.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var preferencesManager: PreferencesManager
-    private lateinit var networkMonitor: NetworkMonitor
-    private lateinit var portalClient: PortalClient
-
     private val viewModel: MainViewModel by viewModels {
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val appCtx = applicationContext
+                AppLogger.init(appCtx)
                 return MainViewModel(
-                    preferencesManager = preferencesManager,
-                    portalClient = portalClient,
-                    networkMonitor = networkMonitor
+                    preferencesManager = PreferencesManager(appCtx),
+                    portalClient = PortalClient(),
+                    networkMonitor = NetworkMonitor(appCtx)
                 ) as T
             }
         }
@@ -37,9 +36,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        preferencesManager = PreferencesManager(applicationContext)
-        networkMonitor = NetworkMonitor(applicationContext)
-        portalClient = PortalClient()
+        AppLogger.init(applicationContext)
 
         setContent {
             MgeniTheme {

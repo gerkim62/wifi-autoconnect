@@ -16,12 +16,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.PersonOff
+import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.Web
@@ -32,6 +39,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -51,13 +59,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.outlined.PersonOff
-import androidx.compose.material.icons.outlined.RestartAlt
 import com.mgeni.autologin.BuildConfig
 import com.mgeni.autologin.data.PreferencesManager
 import com.mgeni.autologin.ui.components.ConfirmationDialog
 import com.mgeni.autologin.ui.components.PrimaryActionButton
 import com.mgeni.autologin.ui.components.SecondaryActionButton
+import com.mgeni.autologin.ui.theme.EmeraldContainer
+import com.mgeni.autologin.ui.theme.EmeraldPrimary
 import com.mgeni.autologin.ui.theme.ErrorContainerDark
 import com.mgeni.autologin.ui.theme.ErrorContainerLight
 import com.mgeni.autologin.ui.theme.ErrorRed
@@ -67,7 +75,8 @@ import com.mgeni.autologin.ui.theme.WarningContainerLight
 
 /**
  * Screen 8: Advanced Settings Screen
- * Allows customizing captive portal URL, skipping initial internet check, and clearing saved credentials.
+ * Allows customizing captive portal URL, skipping initial internet check,
+ * managing credentials, exporting diagnostic logs, and tracking dirty state.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,9 +85,13 @@ fun AdvancedSettingsScreen(
     initialCheckInternetOnStartup: Boolean = true,
     hasSavedCredentials: Boolean = false,
     errorMessage: String? = null,
+    successMessage: String? = null,
+    logCount: Int = 0,
     onSaveClick: (newUrl: String, checkInternetOnStartup: Boolean) -> Unit,
     onClearCredentialsClick: () -> Unit = {},
     onResetToDefaultClick: () -> Unit,
+    onExportLogsClick: () -> Unit = {},
+    onClearLogsClick: () -> Unit = {},
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -86,6 +99,11 @@ fun AdvancedSettingsScreen(
     var checkInternetOnStartup by remember(initialCheckInternetOnStartup) { mutableStateOf(initialCheckInternetOnStartup) }
     var showClearCredsDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
+    var showClearLogsDialog by remember { mutableStateOf(false) }
+
+    val hasUnsavedChanges = portalUrl.trim() != currentPortalUrl.trim() ||
+        checkInternetOnStartup != initialCheckInternetOnStartup
+
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
 
@@ -119,14 +137,46 @@ fun AdvancedSettingsScreen(
         )
     }
 
+    if (showClearLogsDialog) {
+        ConfirmationDialog(
+            title = "Clear diagnostic logs?",
+            message = "This will delete all recorded captive portal and network activity logs from this device.",
+            confirmButtonText = "Clear Logs",
+            isDestructive = true,
+            icon = Icons.Outlined.DeleteOutline,
+            onConfirm = {
+                showClearLogsDialog = false
+                onClearLogsClick()
+            },
+            onDismiss = { showClearLogsDialog = false }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Advanced Settings",
-                        style = MaterialTheme.typography.titleLarge
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Advanced Settings",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        if (hasUnsavedChanges) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.padding(top = 2.dp)
+                            ) {
+                                Text(
+                                    text = "Unsaved",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -155,10 +205,39 @@ fun AdvancedSettingsScreen(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                // Warning Banner
                 val isDark = MaterialTheme.colorScheme.background.red < 0.5f
-                val warningBg = if (isDark) WarningContainerDark else WarningContainerLight
 
+                // Success Feedback Banner
+                AnimatedVisibility(visible = !successMessage.isNullOrBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(EmeraldContainer.copy(alpha = 0.4f))
+                            .padding(12.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Outlined.CheckCircle,
+                                contentDescription = "Success",
+                                tint = EmeraldPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = successMessage ?: "",
+                                style = MaterialTheme.typography.bodyMedium.copy(color = EmeraldPrimary, fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                            )
+                        }
+                    }
+                }
+
+                if (!successMessage.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
+                // Caution Banner
+                val warningBg = if (isDark) WarningContainerDark else WarningContainerLight
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -350,6 +429,109 @@ fun AdvancedSettingsScreen(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Diagnostic Logs Section
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                        .padding(14.dp)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.InsertDriveFile,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Diagnostic Logs",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                Text(
+                                    text = "Captures portal HTTP requests, responses & errors ($logCount events).",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { onExportLogsClick() }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Share,
+                                        contentDescription = "Export Logs",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Export Logs",
+                                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+
+                            if (logCount > 0) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable { showClearLogsDialog = true }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 14.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.DeleteOutline,
+                                            contentDescription = "Clear Logs",
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Clear",
+                                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             Column(
@@ -359,7 +541,7 @@ fun AdvancedSettingsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 PrimaryActionButton(
-                    text = "Save",
+                    text = if (hasUnsavedChanges) "Save Changes" else "Save",
                     onClick = {
                         focusManager.clearFocus()
                         onSaveClick(portalUrl, checkInternetOnStartup)

@@ -38,6 +38,7 @@ fun LoginFailedScreen(
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
     onRefresh: () -> Unit = onTryAgainClick,
+    isRefreshing: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -52,6 +53,7 @@ fun LoginFailedScreen(
     ) { innerPadding ->
         PullToRefreshLayout(
             onRefresh = onRefresh,
+            isRefreshing = isRefreshing,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)

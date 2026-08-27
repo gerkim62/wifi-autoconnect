@@ -2,14 +2,15 @@ package com.mgeni.autologin.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Manages user credentials and portal preferences using Android SharedPreferences (plaintext).
+ * Manages user credentials and portal preferences using Android SharedPreferences with thread-safe in-memory fallback.
  */
 open class PreferencesManager(context: Context? = null) {
 
     private val prefs: SharedPreferences? = context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    private val memoryStore = mutableMapOf<String, Any>()
+    private val memoryStore = ConcurrentHashMap<String, Any>()
 
     companion object {
         private const val PREFS_NAME = "mgeni_prefs"
@@ -27,8 +28,9 @@ open class PreferencesManager(context: Context? = null) {
     var username: String
         get() = prefs?.getString(KEY_USERNAME, "") ?: (memoryStore[KEY_USERNAME] as? String ?: "")
         set(value) {
-            prefs?.edit()?.putString(KEY_USERNAME, value)?.apply()
-            memoryStore[KEY_USERNAME] = value
+            val trimmed = value.trim()
+            prefs?.edit()?.putString(KEY_USERNAME, trimmed)?.apply()
+            memoryStore[KEY_USERNAME] = trimmed
         }
 
     var password: String
@@ -45,6 +47,7 @@ open class PreferencesManager(context: Context? = null) {
             val trimmed = value.trim()
             prefs?.edit()?.putString(KEY_PORTAL_URL, trimmed)?.apply()
             memoryStore[KEY_PORTAL_URL] = trimmed
+            AppLogger.i("PREFERENCES", "Portal URL updated to: $trimmed")
         }
 
     var rememberMe: Boolean
@@ -70,6 +73,7 @@ open class PreferencesManager(context: Context? = null) {
         set(value) {
             prefs?.edit()?.putBoolean(KEY_CHECK_INTERNET_ON_STARTUP, value)?.apply()
             memoryStore[KEY_CHECK_INTERNET_ON_STARTUP] = value
+            AppLogger.i("PREFERENCES", "checkInternetOnStartup updated to: $value")
         }
 
     var skipInitialInternetCheck: Boolean
@@ -83,11 +87,13 @@ open class PreferencesManager(context: Context? = null) {
     }
 
     fun saveCredentials(user: String, pass: String, remember: Boolean) {
+        val trimmedUser = user.trim()
+        AppLogger.i("PREFERENCES", "Saving credentials: user=$trimmedUser, remember=$remember")
         if (prefs != null) {
             prefs.edit().apply {
                 putBoolean(KEY_REMEMBER_ME, remember)
                 if (remember) {
-                    putString(KEY_USERNAME, user.trim())
+                    putString(KEY_USERNAME, trimmedUser)
                     putString(KEY_PASSWORD, pass)
                 } else {
                     remove(KEY_USERNAME)
@@ -98,7 +104,7 @@ open class PreferencesManager(context: Context? = null) {
         }
         memoryStore[KEY_REMEMBER_ME] = remember
         if (remember) {
-            memoryStore[KEY_USERNAME] = user.trim()
+            memoryStore[KEY_USERNAME] = trimmedUser
             memoryStore[KEY_PASSWORD] = pass
         } else {
             memoryStore.remove(KEY_USERNAME)
@@ -107,11 +113,14 @@ open class PreferencesManager(context: Context? = null) {
     }
 
     fun clearSavedCredentials() {
-        prefs?.edit()?.apply {
-            remove(KEY_USERNAME)
-            remove(KEY_PASSWORD)
-            putBoolean(KEY_REMEMBER_ME, true)
-            apply()
+        AppLogger.i("PREFERENCES", "Explicitly clearing saved credentials from device.")
+        if (prefs != null) {
+            prefs.edit().apply {
+                remove(KEY_USERNAME)
+                remove(KEY_PASSWORD)
+                putBoolean(KEY_REMEMBER_ME, true)
+                apply()
+            }
         }
         memoryStore.remove(KEY_USERNAME)
         memoryStore.remove(KEY_PASSWORD)
@@ -119,6 +128,7 @@ open class PreferencesManager(context: Context? = null) {
     }
 
     fun resetPortalUrl() {
+        AppLogger.i("PREFERENCES", "Resetting portal URL to default: $DEFAULT_PORTAL_URL")
         prefs?.edit()?.putString(KEY_PORTAL_URL, DEFAULT_PORTAL_URL)?.apply()
         memoryStore[KEY_PORTAL_URL] = DEFAULT_PORTAL_URL
     }

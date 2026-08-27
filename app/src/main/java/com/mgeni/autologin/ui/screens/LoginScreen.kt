@@ -85,6 +85,7 @@ fun LoginScreen(
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
     onRefresh: () -> Unit = {},
+    isRefreshing: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var username by remember(initialUsername) { mutableStateOf(initialUsername) }
@@ -95,7 +96,7 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var isSubmitting by remember { mutableStateOf(false) }
 
-    LaunchedEffect(errorMessage) {
+    LaunchedEffect(errorMessage, initialUsername, initialPassword) {
         isSubmitting = false
     }
 
@@ -132,6 +133,7 @@ fun LoginScreen(
     ) { innerPadding ->
         PullToRefreshLayout(
             onRefresh = onRefresh,
+            isRefreshing = isRefreshing,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
@@ -248,6 +250,7 @@ fun LoginScreen(
                         onValueChange = {
                             username = it
                             if (usernameError != null) usernameError = null
+                            isSubmitting = false
                         },
                         label = { Text("Username") },
                         isError = usernameError != null,
@@ -286,6 +289,7 @@ fun LoginScreen(
                         onValueChange = {
                             password = it
                             if (passwordError != null) passwordError = null
+                            isSubmitting = false
                         },
                         label = { Text("Password") },
                         isError = passwordError != null,

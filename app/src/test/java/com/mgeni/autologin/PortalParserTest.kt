@@ -85,4 +85,27 @@ class PortalParserTest {
         val result = portalClient.parseLoginPage("", "http://10.10.10.10/login.html")
         assertTrue(result is PageFetchResult.Error)
     }
+
+    @Test
+    fun `parseLoginPage uses switch_url query parameter for action URL when present`() {
+        val sampleHtml = """
+            <html>
+            <body>
+                <form action="/login.html" method="post">
+                    <input type="hidden" name="au_pxytimetag" value="token_switch_123" />
+                </form>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val result = portalClient.parseLoginPage(
+            sampleHtml,
+            "http://1.1.1.1/login.html?switch_url=http%3A%2F%2F10.10.10.10%2Flogin.html"
+        )
+
+        assertTrue(result is PageFetchResult.Success)
+        val success = result as PageFetchResult.Success
+        assertEquals("http://10.10.10.10/login.html", success.actionUrl)
+        assertEquals("token_switch_123", success.timeTag)
+    }
 }
