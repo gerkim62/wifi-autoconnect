@@ -5,7 +5,7 @@ A minimal Android utility app built with Kotlin and Jetpack Compose that automat
 ## 📲 Pre-built APK Download
 
 You can grab the ready-to-install pre-signed release APK directly from the repo:
-- **[assets/WifiAuto-v1.0.0.apk](assets/WifiAuto-v1.0.0.apk)** (~1.7 MB)
+- **[assets/WifiAuto-v2.0.0.apk](assets/WifiAuto-v2.0.0.apk)** (~2.1 MB)
 
 ---
 
