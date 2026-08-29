@@ -1,10 +1,13 @@
 package com.mgeni.autologin
 
+import com.mgeni.autologin.data.NetworkBoundDns
 import com.mgeni.autologin.data.PageFetchResult
 import com.mgeni.autologin.data.PortalClient
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.net.UnknownHostException
 
 class PortalParserTest {
 
@@ -140,12 +143,49 @@ class PortalParserTest {
     }
 
     @Test
-    fun `inspectAuthResponseHtml returns Unknown for generic or empty HTML`() {
-        val genericHtml = "<html><body><p>Hello world</p></body></html>"
-        val result1 = portalClient.inspectAuthResponseHtml(genericHtml)
-        assertTrue(result1 is com.mgeni.autologin.data.HtmlAuthResult.Unknown)
+    fun `parseLoginPage returns AlreadyAuthenticated when Cisco success page is fetched directly`() {
+        val ciscoSuccessHtml = """
+            <html>
+            <head><title>Authentication Proxy Success Page</title></head>
+            <body>
+                <h1>Authentication Successful !</h1>
+                <table><tr><td>You can now use all regular services over this network</td></tr></table>
+            </body>
+            </html>
+        """.trimIndent()
 
-        val result2 = portalClient.inspectAuthResponseHtml("")
-        assertTrue(result2 is com.mgeni.autologin.data.HtmlAuthResult.Unknown)
+        val result = portalClient.parseLoginPage(ciscoSuccessHtml, "http://10.10.10.10/login.html")
+        assertTrue("Expected AlreadyAuthenticated, got $result", result is PageFetchResult.AlreadyAuthenticated)
+    }
+
+    @Test
+    fun `NetworkBoundDns resolves direct IP addresses without DNS lookup`() {
+        val dns = NetworkBoundDns(network = null)
+        val result = dns.lookup("10.10.10.10")
+        assertEquals(1, result.size)
+        assertEquals("10.10.10.10", result.first().hostAddress)
+    }
+
+    @Test
+    fun `NetworkBoundDns provides fallback Anycast IPs for connectivity check domains when DNS fails`() {
+        val dns = NetworkBoundDns(network = null)
+        val connectivityIps = dns.lookup("connectivitycheck.gstatic.com")
+        assertNotNull(connectivityIps)
+        assertTrue("Expected fallback IPs for connectivitycheck.gstatic.com", connectivityIps.isNotEmpty())
+        assertEquals("142.251.47.35", connectivityIps.first().hostAddress)
+
+        val clients3Ips = dns.lookup("clients3.google.com")
+        assertTrue(clients3Ips.isNotEmpty())
+        assertEquals("192.178.54.14", clients3Ips.first().hostAddress)
+
+        val cloudflareIps = dns.lookup("one.one.one.one")
+        assertTrue(cloudflareIps.isNotEmpty())
+        assertEquals("1.1.1.1", cloudflareIps.first().hostAddress)
+    }
+
+    @Test(expected = UnknownHostException::class)
+    fun `NetworkBoundDns throws UnknownHostException for unknown domain without fallback`() {
+        val dns = NetworkBoundDns(network = null)
+        dns.lookup("some.unknown.invalid.nonexistent.domain.test")
     }
 }

@@ -10,6 +10,10 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
 import java.io.IOException
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.Socket
+import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
 sealed interface ConnectivityResult {
@@ -24,6 +28,7 @@ sealed interface PageFetchResult {
         val actionUrl: String,
         val redirectUrl: String
     ) : PageFetchResult
+    data object AlreadyAuthenticated : PageFetchResult
     data class Error(val message: String) : PageFetchResult
 }
 
@@ -39,11 +44,103 @@ sealed interface LoginSubmitResult {
     data class NetworkFailed(val message: String) : LoginSubmitResult
 }
 
+/**
+ * Resilient OkHttp DNS implementation that binds to a specific Wi-Fi [Network] interface
+ * and provides instant hardcoded Anycast IPv4 fallbacks for standard connectivity endpoints.
+ * Completely eliminates DNS stalls and timeouts (e.g. on Samsung devices with Private DNS enabled).
+ */
+open class NetworkBoundDns(
+    private val network: Network? = null,
+    private val fallbackIps: Map<String, List<InetAddress>> = DEFAULT_CONNECTIVITY_FALLBACK_IPS
+) : okhttp3.Dns {
+
+    companion object {
+        val DEFAULT_CONNECTIVITY_FALLBACK_IPS: Map<String, List<InetAddress>> by lazy {
+            mapOf(
+                "connectivitycheck.gstatic.com" to listOf(
+                    InetAddress.getByName("142.251.47.35"),
+                    InetAddress.getByName("142.250.190.46")
+                ),
+                "clients3.google.com" to listOf(
+                    InetAddress.getByName("192.178.54.14"),
+                    InetAddress.getByName("172.217.16.206")
+                ),
+                "www.google.com" to listOf(
+                    InetAddress.getByName("142.251.153.119"),
+                    InetAddress.getByName("142.251.154.119")
+                ),
+                "captive.apple.com" to listOf(
+                    InetAddress.getByName("17.253.111.203"),
+                    InetAddress.getByName("17.253.111.201")
+                ),
+                "one.one.one.one" to listOf(
+                    InetAddress.getByName("1.1.1.1"),
+                    InetAddress.getByName("1.0.0.1")
+                )
+            )
+        }
+    }
+
+    override fun lookup(hostname: String): List<InetAddress> {
+        val cleanHost = hostname.trim().lowercase()
+        val startTime = System.currentTimeMillis()
+
+        // 1. If it's already an IP address, return it directly
+        if (cleanHost.matches(Regex("""^\d{1,3}(\.\d{1,3}){3}$""")) || cleanHost.contains(":")) {
+            return try {
+                listOf(InetAddress.getByName(cleanHost))
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+
+        // 2. Try network-specific resolution if network interface is bound
+        if (network != null) {
+            try {
+                val resolved = network.getAllByName(cleanHost).toList()
+                if (resolved.isNotEmpty()) {
+                    val elapsed = System.currentTimeMillis() - startTime
+                    AppLogger.d("DNS", "Network-bound lookup for $cleanHost succeeded (${elapsed}ms): ${resolved.map { it.hostAddress }}")
+                    return resolved
+                }
+            } catch (e: Exception) {
+                val elapsed = System.currentTimeMillis() - startTime
+                AppLogger.w("DNS", "Network-bound lookup for $cleanHost failed (${elapsed}ms): ${e.message}")
+            }
+        } else {
+            // 3. Try default system DNS resolution
+            try {
+                val resolved = okhttp3.Dns.SYSTEM.lookup(cleanHost)
+                if (resolved.isNotEmpty()) {
+                    val elapsed = System.currentTimeMillis() - startTime
+                    AppLogger.d("DNS", "System DNS lookup for $cleanHost succeeded (${elapsed}ms): ${resolved.map { it.hostAddress }}")
+                    return resolved
+                }
+            } catch (e: Exception) {
+                val elapsed = System.currentTimeMillis() - startTime
+                AppLogger.w("DNS", "System DNS lookup for $cleanHost failed (${elapsed}ms): ${e.message}")
+            }
+        }
+
+        // 4. Fallback to hardcoded Anycast IPs for connectivity check domains
+        fallbackIps[cleanHost]?.let { fallbacks ->
+            val elapsed = System.currentTimeMillis() - startTime
+            AppLogger.i("DNS", "Bypassing DNS for $cleanHost (${elapsed}ms) -> Using hardcoded Anycast fallback IP: ${fallbacks.first().hostAddress}")
+            return fallbacks
+        }
+
+        throw UnknownHostException("Unable to resolve host \"$cleanHost\": DNS lookup failed and no fallback available.")
+    }
+}
+
 open class PortalClient(
     private var client: OkHttpClient = createDefaultOkHttpClient()
 ) {
+    private var currentNetwork: Network? = null
+
     companion object {
         const val CONNECTIVITY_CHECK_URL = "http://connectivitycheck.gstatic.com/generate_204"
+        const val FALLBACK_CONNECTIVITY_URL = "http://clients3.google.com/generate_204"
 
         fun createDefaultOkHttpClient(network: Network? = null): OkHttpClient {
             val builder = OkHttpClient.Builder()
@@ -55,6 +152,7 @@ open class PortalClient(
                 .connectionPool(okhttp3.ConnectionPool(0, 1, TimeUnit.SECONDS))
                 .followRedirects(false)
                 .followSslRedirects(false)
+                .dns(NetworkBoundDns(network))
 
             if (network != null) {
                 try {
@@ -76,26 +174,34 @@ open class PortalClient(
         if (html.isBlank()) return HtmlAuthResult.Unknown
         val lowerHtml = html.lowercase()
 
-        // Cisco IOS Authentication Proxy Failure Page and common captive portal rejection indicators
-        val isExplicitFailure = lowerHtml.contains("authentication failed") ||
-                lowerHtml.contains("authentication proxy failed") ||
-                lowerHtml.contains("invalid username or password") ||
-                lowerHtml.contains("login failed") ||
-                lowerHtml.contains("credentials rejected")
-
-        if (isExplicitFailure) {
+        // 1. Cisco-specific templates first
+        val isCiscoFailure = lowerHtml.contains("authentication proxy failed") ||
+                (lowerHtml.contains("<title>authentication proxy failed page</title>") ||
+                        lowerHtml.contains("authentication failed !"))
+        if (isCiscoFailure) {
             return HtmlAuthResult.ExplicitFailure()
         }
 
-        // Cisco IOS Authentication Proxy Success Page and common captive portal approval indicators
-        val isExplicitSuccess = lowerHtml.contains("authentication successful") ||
-                lowerHtml.contains("authentication proxy success") ||
-                lowerHtml.contains("login successful") ||
+        val isCiscoSuccess = lowerHtml.contains("authentication proxy success") ||
+                lowerHtml.contains("authentication successful !") ||
+                lowerHtml.contains("you can now use all regular services over this network")
+        if (isCiscoSuccess) {
+            return HtmlAuthResult.ExplicitSuccess
+        }
+
+        // 2. Generic portal templates fallback
+        val isGenericFailure = lowerHtml.contains("invalid username or password") ||
+                lowerHtml.contains("login failed") ||
+                lowerHtml.contains("credentials rejected")
+        if (isGenericFailure) {
+            return HtmlAuthResult.ExplicitFailure()
+        }
+
+        val isGenericSuccess = lowerHtml.contains("login successful") ||
                 lowerHtml.contains("connection established") ||
                 lowerHtml.contains("you are now logged in") ||
                 lowerHtml.contains("logged in successfully")
-
-        if (isExplicitSuccess) {
+        if (isGenericSuccess) {
             return HtmlAuthResult.ExplicitSuccess
         }
 
@@ -106,26 +212,81 @@ open class PortalClient(
      * Binds OkHttpClient to the specified Wi-Fi Network interface to prevent mobile data routing conflicts.
      */
     open fun bindToNetwork(network: Network?) {
+        currentNetwork = network
         client = createDefaultOkHttpClient(network)
     }
 
     /**
-     * Checks internet connectivity using Google's generate_204 endpoint.
+     * Probes direct TCP IP connectivity without DNS dependency (e.g. Cloudflare 1.1.1.1 or Google 8.8.8.8).
+     */
+    open fun testDirectIpSocket(
+        network: Network? = currentNetwork,
+        host: String = "1.1.1.1",
+        port: Int = 80,
+        timeoutMs: Int = 1500
+    ): Boolean {
+        val startTime = System.currentTimeMillis()
+        return try {
+            val socket = network?.socketFactory?.createSocket() ?: Socket()
+            socket.use { s ->
+                s.connect(InetSocketAddress(host, port), timeoutMs)
+                val elapsed = System.currentTimeMillis() - startTime
+                AppLogger.i("CONNECTIVITY_PROBE", "Direct IP socket connect to $host:$port succeeded (${elapsed}ms). Unrestricted IP routing active.")
+                true
+            }
+        } catch (e: Exception) {
+            val elapsed = System.currentTimeMillis() - startTime
+            AppLogger.d("CONNECTIVITY_PROBE", "Direct IP socket connect to $host:$port failed (${elapsed}ms): ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Checks internet connectivity using generate_204 endpoint with multi-layered DNS bypass and direct IP probe fallback.
      */
     open suspend fun check204Connectivity(
         connectivityUrl: String = CONNECTIVITY_CHECK_URL
     ): ConnectivityResult = withContext(Dispatchers.IO) {
         val startTime = System.currentTimeMillis()
+        val result = executeSingle204Check(connectivityUrl, startTime)
+
+        if (result is ConnectivityResult.AlreadyConnected) {
+            return@withContext result
+        }
+
+        // If primary check failed due to network / DNS unreachable, attempt direct IP probe and fallback URL
+        if (result is ConnectivityResult.Unreachable) {
+            val ipDirectConnected = testDirectIpSocket(currentNetwork, "1.1.1.1", 80, 1500) ||
+                    testDirectIpSocket(currentNetwork, "8.8.8.8", 53, 1500)
+            if (ipDirectConnected) {
+                AppLogger.i("CONNECTIVITY_CHECK", "Direct IP probe succeeded. Internet routing active despite DNS/204 glitch.")
+                return@withContext ConnectivityResult.AlreadyConnected
+            }
+
+            if (connectivityUrl == CONNECTIVITY_CHECK_URL) {
+                AppLogger.i("CONNECTIVITY_CHECK", "Retrying with fallback connectivity endpoint: $FALLBACK_CONNECTIVITY_URL")
+                val fallbackStart = System.currentTimeMillis()
+                val fallbackResult = executeSingle204Check(FALLBACK_CONNECTIVITY_URL, fallbackStart)
+                if (fallbackResult !is ConnectivityResult.Unreachable) {
+                    return@withContext fallbackResult
+                }
+            }
+        }
+
+        result
+    }
+
+    private fun executeSingle204Check(url: String, startTime: Long): ConnectivityResult {
         val request = Request.Builder()
-            .url(connectivityUrl)
+            .url(url)
             .header("Cache-Control", "no-cache")
             .header("Pragma", "no-cache")
             .header("User-Agent", "Mozilla/5.0 (Android; Mobile)")
             .build()
 
-        AppLogger.i("CONNECTIVITY_CHECK", "--> GET $connectivityUrl")
+        AppLogger.i("CONNECTIVITY_CHECK", "--> GET $url")
 
-        try {
+        return try {
             client.newCall(request).execute().use { response ->
                 val elapsed = System.currentTimeMillis() - startTime
                 val code = response.code
@@ -139,10 +300,10 @@ open class PortalClient(
                     204 -> ConnectivityResult.AlreadyConnected
                     in 300..399 -> ConnectivityResult.CaptiveDetected(location)
                     200 -> {
-                        // Some portals intercept 204 and return HTTP 200 with HTML login page
-                        ConnectivityResult.CaptiveDetected(null)
+                        // Some portals intercept 204 and return HTTP 200 with HTML login page or Location header
+                        ConnectivityResult.CaptiveDetected(location)
                     }
-                    else -> ConnectivityResult.CaptiveDetected(null)
+                    else -> ConnectivityResult.CaptiveDetected(location)
                 }
                 AppLogger.i("CONNECTIVITY_CHECK", "Result: $result")
                 result
@@ -219,8 +380,17 @@ open class PortalClient(
             } catch (e: IOException) {
                 val hopElapsed = System.currentTimeMillis() - hopStart
                 AppLogger.w("PORTAL_FETCH", "<-- FAILED (${hopElapsed}ms) on $currentUrl: ${e.message}", e)
+
+                // When Cisco router has already authenticated client, GET /login.html drops connection with EOFException.
+                // Verify if device is already authenticated via direct IP / 204 check:
+                val connectivity = check204Connectivity()
+                if (connectivity is ConnectivityResult.AlreadyConnected) {
+                    AppLogger.i("PORTAL_FETCH", "Portal dropped connection because client is already authenticated! Connectivity confirmed.")
+                    return@withContext PageFetchResult.AlreadyAuthenticated
+                }
+
                 return@withContext PageFetchResult.Error(
-                    "Couldn't reach the portal. Check that you're connected to the \"guest\" Wi-Fi network, or check if the portal URL is correct."
+                    "Portal connection was closed by the gateway. If you are already connected, tap Refresh to verify internet."
                 )
             } catch (e: Exception) {
                 val hopElapsed = System.currentTimeMillis() - hopStart
@@ -256,6 +426,11 @@ open class PortalClient(
 
         val timeTag = timeTagInput?.attr("value")
         if (timeTag.isNullOrBlank()) {
+            val htmlAuth = inspectAuthResponseHtml(html)
+            if (htmlAuth is HtmlAuthResult.ExplicitSuccess) {
+                AppLogger.i("PORTAL_PARSER", "Portal returned Success Page directly during fetch. User is already authenticated!")
+                return PageFetchResult.AlreadyAuthenticated
+            }
             AppLogger.w("PORTAL_PARSER", "Missing au_pxytimetag input. Network unsupported or already authenticated.")
             return PageFetchResult.Error(
                 "This network is not supported. Only Guest is supported. Please log in using your web browser, or contact the developer if you need support."
@@ -386,42 +561,30 @@ open class PortalClient(
             }
 
             is HtmlAuthResult.ExplicitSuccess -> {
-                AppLogger.i("PORTAL_SUBMIT", "Portal HTML reported explicit success! Verifying internet connectivity...")
-                onStatusUpdate?.invoke("Authentication Approved", "Portal accepted credentials. Verifying connectivity…")
+                AppLogger.i("PORTAL_SUBMIT", "Portal HTML reported explicit success: Authentication Successful! Credentials confirmed by gateway.")
+                onStatusUpdate?.invoke("Authentication Approved", "Portal accepted credentials. Activating internet…")
 
-                delay(150L)
-                var verifyResult = check204Connectivity(connectivityUrl)
-                if (verifyResult is ConnectivityResult.AlreadyConnected) {
-                    AppLogger.i("PORTAL_SUBMIT", "Internet verified immediately on success HTML!")
-                    return@withContext LoginSubmitResult.Success
-                }
-
-                // Give the router firewall a brief moment to open up routes
-                delay(400L)
-                verifyResult = check204Connectivity(connectivityUrl)
-                if (verifyResult is ConnectivityResult.AlreadyConnected) {
-                    AppLogger.i("PORTAL_SUBMIT", "Internet verified on retry after success HTML!")
-                    return@withContext LoginSubmitResult.Success
-                }
-
-                return@withContext when (verifyResult) {
-                    is ConnectivityResult.AlreadyConnected -> LoginSubmitResult.Success
-                    is ConnectivityResult.CaptiveDetected -> {
-                        AppLogger.w("PORTAL_SUBMIT", "Portal reported success but network remains captive.")
-                        LoginSubmitResult.AuthFailed("Portal accepted credentials, but internet access is not yet open. Please try again.")
-                    }
-                    is ConnectivityResult.Unreachable -> {
-                        AppLogger.w("PORTAL_SUBMIT", "Portal reported success but 204 is unreachable.")
-                        LoginSubmitResult.NetworkFailed("Portal accepted credentials, but internet check was unreachable. Check your Wi-Fi connection.")
+                // Run quick non-fatal verification pings
+                val backoffDelays = longArrayOf(150L, 300L, 600L)
+                for ((index, backoffMs) in backoffDelays.withIndex()) {
+                    delay(backoffMs)
+                    AppLogger.i("PORTAL_SUBMIT", "Success verification ping #${index + 1} (after ${backoffMs}ms)...")
+                    val verifyResult = check204Connectivity(connectivityUrl)
+                    if (verifyResult is ConnectivityResult.AlreadyConnected) {
+                        AppLogger.i("PORTAL_SUBMIT", "Login verified on attempt #${index + 1}: 204/IP returned OK! Internet active.")
+                        break
                     }
                 }
+
+                // Explicit gateway success is authoritative: return Success!
+                return@withContext LoginSubmitResult.Success
             }
 
             is HtmlAuthResult.Unknown -> {
                 AppLogger.i("PORTAL_SUBMIT", "HTML body did not match explicit auth templates. Beginning exponential backoff connectivity verification...")
                 onStatusUpdate?.invoke("Verifying Connectivity", "Checking if internet access is active…")
 
-                // Snappy exponential backoff delays (150ms, 300ms, 600ms, 1200ms)
+                // Exponential backoff delays (150ms, 300ms, 600ms, 1200ms)
                 val backoffDelays = longArrayOf(150L, 300L, 600L, 1200L)
                 var lastVerifyResult: ConnectivityResult = ConnectivityResult.Unreachable("Verifying...")
 

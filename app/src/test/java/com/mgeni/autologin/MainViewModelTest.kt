@@ -467,4 +467,105 @@ class MainViewModelTest {
         viewModel.dismissAdvancedSettings()
         assertTrue("Expected AlreadyConnected after save and dismiss, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.AlreadyConnected)
     }
+
+    @Test
+    fun `fetchLoginPage returning AlreadyAuthenticated transitions ViewModel to AlreadyConnected`() = runTest(testDispatcher) {
+        val fakeClient = object : PortalClient() {
+            override suspend fun check204Connectivity(connectivityUrl: String): ConnectivityResult {
+                return ConnectivityResult.CaptiveDetected(null)
+            }
+
+            override suspend fun fetchLoginPage(portalUrl: String): PageFetchResult {
+                return PageFetchResult.AlreadyAuthenticated
+            }
+        }
+
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        assertTrue("Expected AlreadyConnected, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.AlreadyConnected)
+    }
+
+    @Test
+    fun `successful portal auth with DNS delay saves credentials and transitions to Success`() = runTest(testDispatcher) {
+        val fakeClient = object : PortalClient() {
+            override suspend fun check204Connectivity(connectivityUrl: String): ConnectivityResult {
+                return ConnectivityResult.CaptiveDetected(null)
+            }
+
+            override suspend fun fetchLoginPage(portalUrl: String): PageFetchResult {
+                return PageFetchResult.Success(timeTag = "time_123", actionUrl = "http://10.10.10.10/login.html", redirectUrl = "")
+            }
+
+            override suspend fun submitLogin(
+                actionUrl: String,
+                username: String,
+                password: String,
+                timeTag: String,
+                redirectUrl: String,
+                connectivityUrl: String,
+                onStatusUpdate: ((status: String, detail: String?) -> Unit)?
+            ): LoginSubmitResult {
+                // Simulating PortalClient treating ExplicitSuccess as authoritative even if 204 is delayed
+                return LoginSubmitResult.Success
+            }
+        }
+
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value is MainUiState.LoginForm)
+
+        viewModel.submitLoginForm("Centralretail1", "mysecretpass", remember = true)
+        advanceUntilIdle()
+
+        assertTrue("Expected Success state, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.Success)
+        assertEquals("Centralretail1", preferencesManager.username)
+        assertEquals("mysecretpass", preferencesManager.password)
+    }
+
+    @Test
+    fun `gateway EOF on fetchLoginPage followed by refresh recovers to AlreadyConnected`() = runTest(testDispatcher) {
+        var isProbeConnected = false
+        val fakeClient = object : PortalClient() {
+            override suspend fun check204Connectivity(connectivityUrl: String): ConnectivityResult {
+                return if (isProbeConnected) ConnectivityResult.AlreadyConnected else ConnectivityResult.CaptiveDetected(null)
+            }
+
+            override suspend fun fetchLoginPage(portalUrl: String): PageFetchResult {
+                return if (isProbeConnected) {
+                    PageFetchResult.AlreadyAuthenticated
+                } else {
+                    PageFetchResult.Error("Portal connection was closed by the gateway. If you are already connected, tap Refresh to verify internet.")
+                }
+            }
+        }
+
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        val errorState = viewModel.uiState.value
+        assertTrue("Expected NotOnGuestNetwork, got $errorState", errorState is MainUiState.NotOnGuestNetwork)
+        assertTrue((errorState as MainUiState.NotOnGuestNetwork).errorMessage.contains("closed by the gateway"))
+
+        // User taps Refresh after gateway connection closed
+        isProbeConnected = true
+        viewModel.startConnectionCheck(isUserInitiated = true)
+        advanceUntilIdle()
+
+        assertTrue("Expected AlreadyConnected after refresh, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.AlreadyConnected)
+    }
 }
+

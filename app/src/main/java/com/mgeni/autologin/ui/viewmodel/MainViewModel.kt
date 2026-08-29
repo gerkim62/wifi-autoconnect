@@ -276,6 +276,14 @@ class MainViewModel(
         val isModal = currentState is MainUiState.AdvancedSettings || currentState is MainUiState.About
 
         when (pageResult) {
+            is PageFetchResult.AlreadyAuthenticated -> {
+                AppLogger.i("VIEW_MODEL", "Portal confirmed device is already authenticated.")
+                if (isModal) {
+                    updateModalPreviousState(MainUiState.AlreadyConnected)
+                } else {
+                    _uiState.value = MainUiState.AlreadyConnected
+                }
+            }
             is PageFetchResult.Error -> {
                 AppLogger.w("VIEW_MODEL", "Portal page fetch returned error: ${pageResult.message}")
                 val errorState = MainUiState.NotOnGuestNetwork(errorMessage = pageResult.message)
@@ -356,6 +364,10 @@ class MainViewModel(
             try {
                 val portalUrl = preferencesManager.portalUrl
                 when (val pageResult = portalClient.fetchLoginPage(portalUrl)) {
+                    is PageFetchResult.AlreadyAuthenticated -> {
+                        AppLogger.i("VIEW_MODEL", "Portal confirmed device is already authenticated during form submit.")
+                        _uiState.value = MainUiState.AlreadyConnected
+                    }
                     is PageFetchResult.Error -> {
                         _uiState.value = MainUiState.LoginForm(
                             username = trimmedUser,
@@ -501,6 +513,10 @@ class MainViewModel(
                 try {
                     val portalUrl = preferencesManager.portalUrl
                     when (val pageResult = portalClient.fetchLoginPage(portalUrl)) {
+                        is PageFetchResult.AlreadyAuthenticated -> {
+                            AppLogger.i("VIEW_MODEL", "Retry revealed device is already authenticated.")
+                            _uiState.value = MainUiState.AlreadyConnected
+                        }
                         is PageFetchResult.Error -> {
                             _uiState.value = MainUiState.LoginFailed(
                                 errorMessage = pageResult.message,
