@@ -32,7 +32,7 @@ fun MobileDataWarningBanner(
         )
         NetworkState.BothWifiAndCellular -> Triple(
             "Both Wi-Fi and Mobile Data are Active",
-            "Android may prioritize mobile data over Wi-Fi. If you experience connection issues, consider turning off Mobile Data temporarily.",
+            "Your phone may use mobile data instead of Wi-Fi. If connection fails, try turning off Mobile Data temporarily.",
             Icons.Outlined.SignalCellularAlt
         )
         NetworkState.Offline -> Triple(

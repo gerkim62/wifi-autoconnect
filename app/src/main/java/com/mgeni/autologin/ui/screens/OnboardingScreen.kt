@@ -72,36 +72,35 @@ data class OnboardingStep(
 
 private val onboardingSteps = listOf(
     OnboardingStep(
-        tag = "WHAT IS WIFIAUTO",
-        title = "Effortless Guest Wi-Fi Access",
-        description = "Tired of repetitive captive portal login popups? WifiAuto automatically detects when you join the guest network and signs you in seamlessly without opening a browser.",
+        tag = "NEVER RETYPE YOUR LOGIN",
+        title = "Stop Retyping Your Login Every Day",
+        description = "Guest Wi-Fi networks log you out repeatedly. WifiAuto saves your username and password so you never have to retype them.",
         icon = Icons.Outlined.Wifi,
         bulletPoints = listOf(
-            Icons.Outlined.CheckCircle to "No manual web browser sign-ins",
-            Icons.Outlined.Security to "Direct and secure captive portal dispatch",
-            Icons.Outlined.Speed to "Instant internet connectivity"
+            Icons.Outlined.CheckCircle to "Enter your login once in this app",
+            Icons.Outlined.Lock to "Your password stays securely on your phone"
         )
     ),
     OnboardingStep(
-        tag = "HOW IT WORKS",
-        title = "Smart Background Verification",
-        description = "When connected to Wi-Fi, the app performs a lightweight connectivity test (HTTP 204). If the portal requires authentication, it automatically negotiates the login in the background.",
-        icon = Icons.Outlined.AutoMode,
+        tag = "FIRST TIME SETUP",
+        title = "Save Your Login in the App",
+        description = "You only need to do this once:",
+        icon = Icons.Outlined.Lock,
         bulletPoints = listOf(
-            Icons.Outlined.Wifi to "Binds directly to active Wi-Fi interface",
-            Icons.Outlined.Lock to "Saved credentials stored securely on-device",
-            Icons.Outlined.Speed to "Near-zero battery consumption"
+            Icons.Outlined.CheckCircle to "1. Connect your phone's Wi-Fi to \"guest\"",
+            Icons.Outlined.CheckCircle to "2. Open this app and enter your username & password",
+            Icons.Outlined.CheckCircle to "3. Tap Connect — your login is saved!"
         )
     ),
     OnboardingStep(
-        tag = "HOW TO USE",
-        title = "Simple 1-Time Setup",
-        description = "Getting started takes less than a minute. Follow these simple steps to enjoy automated sign-in:",
+        tag = "EVERY TIME AFTER",
+        title = "Just Connect & Open the App",
+        description = "Every time you come back to the guest Wi-Fi:",
         icon = Icons.Outlined.RocketLaunch,
         bulletPoints = listOf(
-            Icons.Outlined.CheckCircle to "1. Connect your phone to the guest Wi-Fi",
-            Icons.Outlined.CheckCircle to "2. Enter your username & password, check 'Remember Me'",
-            Icons.Outlined.CheckCircle to "3. Tap 'Sign in' — WifiAuto handles future logins automatically!"
+            Icons.Outlined.CheckCircle to "1. Connect to the \"guest\" Wi-Fi",
+            Icons.Outlined.CheckCircle to "2. Just open this app",
+            Icons.Outlined.CheckCircle to "3. You're online — it logs you in automatically!"
         )
     )
 )
