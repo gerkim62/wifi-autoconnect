@@ -37,6 +37,7 @@ fun LoginFailedScreen(
     onEditCredentialsClick: (username: String) -> Unit,
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
+    onHelpClick: (() -> Unit)? = null,
     onRefresh: () -> Unit = onTryAgainClick,
     isRefreshing: Boolean = false,
     modifier: Modifier = Modifier
@@ -45,7 +46,8 @@ fun LoginFailedScreen(
         topBar = {
             TopBarActions(
                 onSettingsClick = onSettingsClick,
-                onAboutClick = onAboutClick
+                onAboutClick = onAboutClick,
+                onHelpClick = onHelpClick
             )
         },
         containerColor = MaterialTheme.colorScheme.background,

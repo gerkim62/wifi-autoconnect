@@ -33,6 +33,7 @@ fun SuccessScreen(
     onCloseClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
+    onHelpClick: (() -> Unit)? = null,
     onRefresh: () -> Unit = {},
     isRefreshing: Boolean = false,
     modifier: Modifier = Modifier
@@ -41,7 +42,8 @@ fun SuccessScreen(
         topBar = {
             TopBarActions(
                 onSettingsClick = onSettingsClick,
-                onAboutClick = onAboutClick
+                onAboutClick = onAboutClick,
+                onHelpClick = onHelpClick
             )
         },
         containerColor = MaterialTheme.colorScheme.background,

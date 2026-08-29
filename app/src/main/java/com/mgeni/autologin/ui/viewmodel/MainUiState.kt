@@ -55,4 +55,9 @@ sealed interface MainUiState {
     data class About(
         val previousState: MainUiState
     ) : MainUiState
+
+    // 10. Interactive Onboarding / App Guide screen
+    data class Onboarding(
+        val previousState: MainUiState? = null
+    ) : MainUiState
 }

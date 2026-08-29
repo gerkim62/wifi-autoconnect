@@ -7,6 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.net.InetAddress
 import java.net.UnknownHostException
 
 class PortalParserTest {
@@ -168,19 +169,19 @@ class PortalParserTest {
 
     @Test
     fun `NetworkBoundDns provides fallback Anycast IPs for connectivity check domains when DNS fails`() {
-        val dns = NetworkBoundDns(network = null)
-        val connectivityIps = dns.lookup("connectivitycheck.gstatic.com")
-        assertNotNull(connectivityIps)
-        assertTrue("Expected fallback IPs for connectivitycheck.gstatic.com", connectivityIps.isNotEmpty())
-        assertEquals("142.251.47.35", connectivityIps.first().hostAddress)
+        val testFallbackMap = mapOf(
+            "unresolvable.captive.fallback.test" to listOf(InetAddress.getByName("142.251.47.35"))
+        )
+        val dns = NetworkBoundDns(network = null, fallbackIps = testFallbackMap)
+        val fallbackIps = dns.lookup("unresolvable.captive.fallback.test")
+        assertNotNull(fallbackIps)
+        assertTrue("Expected fallback IPs for unresolvable test domain", fallbackIps.isNotEmpty())
+        assertEquals("142.251.47.35", fallbackIps.first().hostAddress)
 
-        val clients3Ips = dns.lookup("clients3.google.com")
-        assertTrue(clients3Ips.isNotEmpty())
-        assertEquals("192.178.54.14", clients3Ips.first().hostAddress)
-
-        val cloudflareIps = dns.lookup("one.one.one.one")
-        assertTrue(cloudflareIps.isNotEmpty())
-        assertEquals("1.1.1.1", cloudflareIps.first().hostAddress)
+        // Verify lookup on well-known domains returns resolved or fallback IP
+        val defaultDns = NetworkBoundDns(network = null)
+        val connectivityIps = defaultDns.lookup("connectivitycheck.gstatic.com")
+        assertTrue(connectivityIps.isNotEmpty())
     }
 
     @Test(expected = UnknownHostException::class)

@@ -23,7 +23,17 @@ open class PreferencesManager(context: Context? = null) {
         private const val KEY_REMEMBER_ME = "remember_me"
         private const val KEY_CHECK_INTERNET_ON_STARTUP = "check_internet_on_startup"
         private const val KEY_SKIP_INITIAL_CHECK = "skip_initial_check"
+        private const val KEY_HAS_COMPLETED_ONBOARDING = "has_completed_onboarding"
     }
+
+    var hasCompletedOnboarding: Boolean
+        get() = prefs?.getBoolean(KEY_HAS_COMPLETED_ONBOARDING, false)
+            ?: (memoryStore[KEY_HAS_COMPLETED_ONBOARDING] as? Boolean ?: false)
+        set(value) {
+            prefs?.edit()?.putBoolean(KEY_HAS_COMPLETED_ONBOARDING, value)?.apply()
+            memoryStore[KEY_HAS_COMPLETED_ONBOARDING] = value
+            AppLogger.i("PREFERENCES", "hasCompletedOnboarding set to $value")
+        }
 
     var username: String
         get() = prefs?.getString(KEY_USERNAME, "") ?: (memoryStore[KEY_USERNAME] as? String ?: "")

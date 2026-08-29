@@ -43,6 +43,7 @@ fun SplashScreen(
     isTakingLong: Boolean = false,
     onSettingsClick: () -> Unit = {},
     onAboutClick: () -> Unit = {},
+    onHelpClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -53,6 +54,7 @@ fun SplashScreen(
         TopBarActions(
             onSettingsClick = onSettingsClick,
             onAboutClick = onAboutClick,
+            onHelpClick = onHelpClick,
             modifier = Modifier.padding(8.dp)
         )
 

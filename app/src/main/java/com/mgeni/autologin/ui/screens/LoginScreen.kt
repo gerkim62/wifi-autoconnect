@@ -60,19 +60,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mgeni.autologin.data.NetworkState
+import com.mgeni.autologin.ui.components.BannerType
 import com.mgeni.autologin.ui.components.MobileDataWarningBanner
 import com.mgeni.autologin.ui.components.PrimaryActionButton
 import com.mgeni.autologin.ui.components.PullToRefreshLayout
+import com.mgeni.autologin.ui.components.StatusBanner
 import com.mgeni.autologin.ui.components.TopBarActions
 import com.mgeni.autologin.ui.theme.EmeraldContainer
 import com.mgeni.autologin.ui.theme.EmeraldPrimary
-import com.mgeni.autologin.ui.theme.ErrorContainerDark
-import com.mgeni.autologin.ui.theme.ErrorContainerLight
-import com.mgeni.autologin.ui.theme.ErrorRed
 
 /**
  * Screen 4: Login Screen
- * With top bar action icons (Gear + Info), pull-to-refresh, double-tap prevention, and error banner support.
+ * With top bar action icons (Help + Info + Gear), pull-to-refresh, double-tap prevention, and high-contrast error banner.
  */
 @Composable
 fun LoginScreen(
@@ -84,6 +83,7 @@ fun LoginScreen(
     onConnectClick: (username: String, password: String, rememberMe: Boolean) -> Unit,
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
+    onHelpClick: () -> Unit = onAboutClick,
     onRefresh: () -> Unit = {},
     isRefreshing: Boolean = false,
     modifier: Modifier = Modifier
@@ -125,7 +125,8 @@ fun LoginScreen(
         topBar = {
             TopBarActions(
                 onSettingsClick = onSettingsClick,
-                onAboutClick = onAboutClick
+                onAboutClick = onAboutClick,
+                onHelpClick = onHelpClick
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
@@ -152,27 +153,12 @@ fun LoginScreen(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
-                    // Error banner if any
-                    AnimatedVisibility(visible = !errorMessage.isNullOrBlank()) {
-                        val isDark = MaterialTheme.colorScheme.background.red < 0.5f
-                        val errorBg = if (isDark) ErrorContainerDark else ErrorContainerLight
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(errorBg)
-                                .padding(12.dp)
-                        ) {
-                            Text(
-                                text = errorMessage ?: "",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    color = ErrorRed,
-                                    fontSize = 13.sp
-                                )
-                            )
-                        }
-                    }
+                    // Error banner if any (High contrast WCAG AAA)
+                    StatusBanner(
+                        type = BannerType.Error,
+                        message = errorMessage ?: "",
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
 
                     // Logo & App Name Header
                     Column(

@@ -33,6 +33,7 @@ class MainViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         preferencesManager = PreferencesManager(null)
+        preferencesManager.hasCompletedOnboarding = true
         networkMonitor = NetworkMonitor(null)
     }
 
@@ -566,6 +567,50 @@ class MainViewModelTest {
         advanceUntilIdle()
 
         assertTrue("Expected AlreadyConnected after refresh, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.AlreadyConnected)
+    }
+
+    @Test
+    fun `first launch when onboarding is not completed shows Onboarding screen`() = runTest(testDispatcher) {
+        preferencesManager.hasCompletedOnboarding = false
+        val fakeClient = FakePortalClient(ConnectivityResult.AlreadyConnected)
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        assertTrue("Expected Onboarding on first launch, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.Onboarding)
+
+        // Completing onboarding saves preference and starts connection check
+        viewModel.completeOnboarding()
+        advanceUntilIdle()
+
+        assertTrue("hasCompletedOnboarding should be true", preferencesManager.hasCompletedOnboarding)
+        assertTrue("Expected AlreadyConnected after onboarding complete, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.AlreadyConnected)
+    }
+
+    @Test
+    fun `openOnboarding and dismissOnboarding preserve and restore previous screen`() = runTest(testDispatcher) {
+        networkMonitor.emitNetworkStateForTesting(hasWifi = true, hasCellular = false)
+        val fakeClient = FakePortalClient(ConnectivityResult.AlreadyConnected)
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value is MainUiState.AlreadyConnected)
+
+        // Open Onboarding from Help button
+        viewModel.openOnboarding()
+        assertTrue(viewModel.uiState.value is MainUiState.Onboarding)
+        assertEquals(MainUiState.AlreadyConnected, (viewModel.uiState.value as MainUiState.Onboarding).previousState)
+
+        // Dismiss Onboarding
+        viewModel.dismissOnboarding()
+        assertTrue(viewModel.uiState.value is MainUiState.AlreadyConnected)
     }
 }
 

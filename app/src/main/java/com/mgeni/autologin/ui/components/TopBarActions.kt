@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
@@ -20,13 +21,14 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Clean top bar action header providing consistent, uncluttered access to
- * Settings (Gear) and About (Info) across all application screens with safe area status bar insets.
+ * Help (?), About (Info), and Settings (Gear) across application screens with safe area status bar insets.
  */
 @Composable
 fun TopBarActions(
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onHelpClick: (() -> Unit)? = null
 ) {
     Box(
         modifier = modifier
@@ -39,6 +41,20 @@ fun TopBarActions(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (onHelpClick != null) {
+                IconButton(
+                    onClick = onHelpClick,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                        contentDescription = "How to use / App Guide",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
             IconButton(
                 onClick = onAboutClick,
                 modifier = Modifier.size(44.dp)

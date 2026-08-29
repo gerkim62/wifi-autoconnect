@@ -61,17 +61,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mgeni.autologin.BuildConfig
 import com.mgeni.autologin.data.PreferencesManager
+import com.mgeni.autologin.ui.components.BannerType
 import com.mgeni.autologin.ui.components.ConfirmationDialog
 import com.mgeni.autologin.ui.components.PrimaryActionButton
 import com.mgeni.autologin.ui.components.SecondaryActionButton
+import com.mgeni.autologin.ui.components.StatusBanner
 import com.mgeni.autologin.ui.theme.EmeraldContainer
 import com.mgeni.autologin.ui.theme.EmeraldPrimary
-import com.mgeni.autologin.ui.theme.ErrorContainerDark
-import com.mgeni.autologin.ui.theme.ErrorContainerLight
-import com.mgeni.autologin.ui.theme.ErrorRed
-import com.mgeni.autologin.ui.theme.WarningAmber
-import com.mgeni.autologin.ui.theme.WarningContainerDark
-import com.mgeni.autologin.ui.theme.WarningContainerLight
 
 /**
  * Screen 8: Advanced Settings Screen
@@ -205,92 +201,27 @@ fun AdvancedSettingsScreen(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                val isDark = MaterialTheme.colorScheme.background.red < 0.5f
-
                 // Success Feedback Banner
-                AnimatedVisibility(visible = !successMessage.isNullOrBlank()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(EmeraldContainer.copy(alpha = 0.4f))
-                            .padding(12.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Outlined.CheckCircle,
-                                contentDescription = "Success",
-                                tint = EmeraldPrimary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = successMessage ?: "",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = EmeraldPrimary, fontWeight = FontWeight.Medium, fontSize = 13.sp)
-                            )
-                        }
-                    }
-                }
-
-                if (!successMessage.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(14.dp))
-                }
+                StatusBanner(
+                    type = BannerType.Success,
+                    message = successMessage ?: "",
+                    modifier = Modifier.padding(bottom = 14.dp)
+                )
 
                 // Caution Banner
-                val warningBg = if (isDark) WarningContainerDark else WarningContainerLight
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(warningBg)
-                        .padding(14.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.Top) {
-                        Icon(
-                            imageVector = Icons.Outlined.WarningAmber,
-                            contentDescription = "Warning",
-                            tint = WarningAmber,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "Caution",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = WarningAmber
-                            )
-                            Text(
-                                text = "Default settings are configured for the \"guest\" Wi-Fi portal.",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
+                StatusBanner(
+                    type = BannerType.Warning,
+                    title = "Caution",
+                    message = "Default settings are configured for the \"guest\" Wi-Fi portal.",
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
 
                 // Validation Error Banner (if any)
-                AnimatedVisibility(visible = !errorMessage.isNullOrBlank()) {
-                    val errorBg = if (isDark) ErrorContainerDark else ErrorContainerLight
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(errorBg)
-                            .padding(12.dp)
-                    ) {
-                        Text(
-                            text = errorMessage ?: "",
-                            style = MaterialTheme.typography.bodyMedium.copy(color = ErrorRed, fontSize = 13.sp)
-                        )
-                    }
-                }
-
-                if (!errorMessage.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
+                StatusBanner(
+                    type = BannerType.Error,
+                    message = errorMessage ?: "",
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
                 // Portal URL Field
                 Text(

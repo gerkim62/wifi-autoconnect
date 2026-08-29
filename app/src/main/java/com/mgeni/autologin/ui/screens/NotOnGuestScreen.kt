@@ -38,6 +38,7 @@ fun NotOnGuestScreen(
     onRetryClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
+    onHelpClick: (() -> Unit)? = null,
     onRefresh: () -> Unit = onRetryClick,
     isRefreshing: Boolean = false,
     modifier: Modifier = Modifier
@@ -68,7 +69,8 @@ fun NotOnGuestScreen(
         topBar = {
             TopBarActions(
                 onSettingsClick = onSettingsClick,
-                onAboutClick = onAboutClick
+                onAboutClick = onAboutClick,
+                onHelpClick = onHelpClick
             )
         },
         containerColor = MaterialTheme.colorScheme.background,

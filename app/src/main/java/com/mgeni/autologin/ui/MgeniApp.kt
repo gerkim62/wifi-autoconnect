@@ -31,21 +31,23 @@ import com.mgeni.autologin.ui.screens.ConnectingScreen
 import com.mgeni.autologin.ui.screens.LoginFailedScreen
 import com.mgeni.autologin.ui.screens.LoginScreen
 import com.mgeni.autologin.ui.screens.NotOnGuestScreen
+import com.mgeni.autologin.ui.screens.OnboardingScreen
 import com.mgeni.autologin.ui.screens.SplashScreen
 import com.mgeni.autologin.ui.screens.SuccessScreen
 import com.mgeni.autologin.ui.viewmodel.MainUiState
 import com.mgeni.autologin.ui.viewmodel.MainViewModel
 
 private fun MainUiState.screenOrder(): Int = when (this) {
-    is MainUiState.CheckingConnection -> 0
-    is MainUiState.NotOnGuestNetwork -> 1
-    is MainUiState.LoginForm -> 2
-    is MainUiState.Connecting -> 3
-    is MainUiState.LoginFailed -> 4
-    is MainUiState.AlreadyConnected -> 5
-    is MainUiState.Success -> 5
-    is MainUiState.AdvancedSettings -> 6
-    is MainUiState.About -> 7
+    is MainUiState.Onboarding -> 0
+    is MainUiState.CheckingConnection -> 1
+    is MainUiState.NotOnGuestNetwork -> 2
+    is MainUiState.LoginForm -> 3
+    is MainUiState.Connecting -> 4
+    is MainUiState.LoginFailed -> 5
+    is MainUiState.AlreadyConnected -> 6
+    is MainUiState.Success -> 6
+    is MainUiState.AdvancedSettings -> 7
+    is MainUiState.About -> 8
 }
 
 @Composable
@@ -96,11 +98,24 @@ fun MgeniApp(
                 .navigationBarsPadding()
         ) { state ->
             when (state) {
+                is MainUiState.Onboarding -> {
+                    BackHandler {
+                        viewModel.dismissOnboarding()
+                    }
+
+                    OnboardingScreen(
+                        onComplete = { viewModel.completeOnboarding() },
+                        isDismissable = state.previousState != null,
+                        onDismiss = { viewModel.dismissOnboarding() }
+                    )
+                }
+
                 is MainUiState.CheckingConnection -> {
                     SplashScreen(
                         isTakingLong = state.isTakingLong,
                         onSettingsClick = { viewModel.openAdvancedSettings() },
-                        onAboutClick = { viewModel.openAbout() }
+                        onAboutClick = { viewModel.openAbout() },
+                        onHelpClick = { viewModel.openOnboarding() }
                     )
                 }
 
@@ -110,6 +125,7 @@ fun MgeniApp(
                         onCloseClick = { (context as? Activity)?.finish() },
                         onSettingsClick = { viewModel.openAdvancedSettings() },
                         onAboutClick = { viewModel.openAbout() },
+                        onHelpClick = { viewModel.openOnboarding() },
                         onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
                         isRefreshing = isBackgroundChecking
                     )
@@ -122,6 +138,7 @@ fun MgeniApp(
                         onRetryClick = { viewModel.startConnectionCheck(isUserInitiated = true) },
                         onSettingsClick = { viewModel.openAdvancedSettings() },
                         onAboutClick = { viewModel.openAbout() },
+                        onHelpClick = { viewModel.openOnboarding() },
                         onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
                         isRefreshing = isBackgroundChecking
                     )
@@ -139,6 +156,7 @@ fun MgeniApp(
                         },
                         onSettingsClick = { viewModel.openAdvancedSettings() },
                         onAboutClick = { viewModel.openAbout() },
+                        onHelpClick = { viewModel.openOnboarding() },
                         onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
                         isRefreshing = isBackgroundChecking
                     )
@@ -160,6 +178,7 @@ fun MgeniApp(
                         onCloseClick = { (context as? Activity)?.finish() },
                         onSettingsClick = { viewModel.openAdvancedSettings() },
                         onAboutClick = { viewModel.openAbout() },
+                        onHelpClick = { viewModel.openOnboarding() },
                         onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
                         isRefreshing = isBackgroundChecking
                     )
@@ -178,6 +197,7 @@ fun MgeniApp(
                         },
                         onSettingsClick = { viewModel.openAdvancedSettings() },
                         onAboutClick = { viewModel.openAbout() },
+                        onHelpClick = { viewModel.openOnboarding() },
                         onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
                         isRefreshing = isBackgroundChecking
                     )
@@ -224,6 +244,9 @@ fun MgeniApp(
                     AboutScreen(
                         onBackClick = {
                             viewModel.dismissAbout()
+                        },
+                        onAppGuideClick = {
+                            viewModel.openOnboarding()
                         }
                     )
                 }

@@ -54,4 +54,14 @@ class MainUiStateTest {
         assertEquals("Invalid URL format", settings.errorMessage)
         assertEquals(previous, settings.previousState)
     }
+
+    @Test
+    fun `Onboarding stores previous state correctly`() {
+        val previous = MainUiState.AlreadyConnected
+        val onboarding = MainUiState.Onboarding(previousState = previous)
+        assertEquals(previous, onboarding.previousState)
+
+        val freshOnboarding = MainUiState.Onboarding()
+        org.junit.Assert.assertNull(freshOnboarding.previousState)
+    }
 }

@@ -64,8 +64,14 @@ class MainViewModel(
     private var loginJob: Job? = null
 
     init {
-        AppLogger.i("VIEW_MODEL", "MainViewModel initialized. Launching initial cold-start connection check.")
-        startConnectionCheck(isUserInitiated = true)
+        AppLogger.i("VIEW_MODEL", "MainViewModel initialized. Checking onboarding status.")
+        if (!preferencesManager.hasCompletedOnboarding) {
+            AppLogger.i("VIEW_MODEL", "First-time launch detected; showing Onboarding screen.")
+            _uiState.value = MainUiState.Onboarding()
+        } else {
+            AppLogger.i("VIEW_MODEL", "Launching initial cold-start connection check.")
+            startConnectionCheck(isUserInitiated = true)
+        }
         observeNetworkChanges()
     }
 
@@ -87,9 +93,10 @@ class MainViewModel(
                 AppLogger.i("VIEW_MODEL", "Wi-Fi change observed (changeCount=$changeCount, isWifiActive=${networkMonitor.isWifiActive.value})")
 
                 val currentState = _uiState.value
-                // Never interrupt active user screens (Settings, About, LoginForm typing)
+                // Never interrupt active user screens (Settings, About, Onboarding, LoginForm typing)
                 if (currentState is MainUiState.AdvancedSettings ||
                     currentState is MainUiState.About ||
+                    currentState is MainUiState.Onboarding ||
                     currentState is MainUiState.LoginForm
                 ) {
                     AppLogger.d("VIEW_MODEL", "Wi-Fi event received while user is on ${currentState::class.simpleName}; maintaining current screen.")
@@ -121,6 +128,7 @@ class MainViewModel(
                 val currentState = _uiState.value
                 if (currentState is MainUiState.AdvancedSettings ||
                     currentState is MainUiState.About ||
+                    currentState is MainUiState.Onboarding ||
                     currentState is MainUiState.LoginForm
                 ) {
                     AppLogger.d("VIEW_MODEL", "NetworkState changed to $netState while user is on ${currentState::class.simpleName}; maintaining current screen.")
@@ -147,6 +155,8 @@ class MainViewModel(
         if (current is MainUiState.AdvancedSettings) {
             _uiState.value = current.copy(previousState = newState)
         } else if (current is MainUiState.About) {
+            _uiState.value = current.copy(previousState = newState)
+        } else if (current is MainUiState.Onboarding) {
             _uiState.value = current.copy(previousState = newState)
         }
     }
@@ -680,6 +690,40 @@ class MainViewModel(
      */
     fun dismissAbout() {
         val previous = (_uiState.value as? MainUiState.About)?.previousState
+            ?: MainUiState.CheckingConnection()
+        _uiState.value = previous
+    }
+
+    /**
+     * Completes onboarding flow and persists the completion flag in Preferences.
+     */
+    fun completeOnboarding() {
+        AppLogger.i("VIEW_MODEL", "Onboarding completed by user.")
+        preferencesManager.hasCompletedOnboarding = true
+        _uiState.value = MainUiState.CheckingConnection(isTakingLong = false)
+        startConnectionCheck(isUserInitiated = true)
+    }
+
+    /**
+     * Opens the onboarding / app guide screen.
+     */
+    fun openOnboarding() {
+        val current = _uiState.value
+        if (current !is MainUiState.Onboarding) {
+            AppLogger.i("VIEW_MODEL", "Opening Onboarding / App Guide screen.")
+            _uiState.value = MainUiState.Onboarding(previousState = current)
+        }
+    }
+
+    /**
+     * Dismisses the onboarding / app guide screen.
+     */
+    fun dismissOnboarding() {
+        if (!preferencesManager.hasCompletedOnboarding) {
+            completeOnboarding()
+            return
+        }
+        val previous = (_uiState.value as? MainUiState.Onboarding)?.previousState
             ?: MainUiState.CheckingConnection()
         _uiState.value = previous
     }
