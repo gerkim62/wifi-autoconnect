@@ -9,10 +9,13 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
+import java.io.EOFException
 import java.io.IOException
+import java.net.ConnectException
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
@@ -373,16 +376,15 @@ open class PortalClient(
                         }
 
                         val htmlBody = response.body?.string().orEmpty()
-                        AppLogger.d("PORTAL_FETCH", "HTML Body received (${htmlBody.length} bytes):\n${htmlBody.take(2000)}")
+                        val htmlSummary = AppLogger.extractHtmlSummary(htmlBody)
+                        AppLogger.d("PORTAL_FETCH", "HTML response ($htmlSummary, ${htmlBody.length} bytes)")
                         return@withContext parseLoginPage(htmlBody, currentUrl)
                     }
                 }
-            } catch (e: IOException) {
+            } catch (e: EOFException) {
                 val hopElapsed = System.currentTimeMillis() - hopStart
-                AppLogger.w("PORTAL_FETCH", "<-- FAILED (${hopElapsed}ms) on $currentUrl: ${e.message}", e)
+                AppLogger.w("PORTAL_FETCH", "<-- FAILED (${hopElapsed}ms) on $currentUrl: Gateway closed connection (EOFException). Verifying if already authenticated.", e)
 
-                // When Cisco router has already authenticated client, GET /login.html drops connection with EOFException.
-                // Verify if device is already authenticated via direct IP / 204 check:
                 val connectivity = check204Connectivity()
                 if (connectivity is ConnectivityResult.AlreadyConnected) {
                     AppLogger.i("PORTAL_FETCH", "Portal dropped connection because client is already authenticated! Connectivity confirmed.")
@@ -391,6 +393,39 @@ open class PortalClient(
 
                 return@withContext PageFetchResult.Error(
                     "Portal connection was closed by the gateway. If you are already connected, tap Refresh to verify internet."
+                )
+            } catch (e: SocketTimeoutException) {
+                val hopElapsed = System.currentTimeMillis() - hopStart
+                AppLogger.w("PORTAL_FETCH", "<-- FAILED (${hopElapsed}ms) on $currentUrl: Connection timed out. Target host is not responding.", e)
+                return@withContext PageFetchResult.Error(
+                    "Connection to the portal timed out. Check that you're connected to the \"guest\" Wi-Fi network, or verify the portal URL in Settings."
+                )
+            } catch (e: ConnectException) {
+                val hopElapsed = System.currentTimeMillis() - hopStart
+                AppLogger.w("PORTAL_FETCH", "<-- FAILED (${hopElapsed}ms) on $currentUrl: Connection refused or host unreachable: ${e.message}", e)
+                return@withContext PageFetchResult.Error(
+                    "Could not connect to portal server. Check that you're connected to the \"guest\" Wi-Fi network, or verify the portal URL in Settings."
+                )
+            } catch (e: IOException) {
+                val hopElapsed = System.currentTimeMillis() - hopStart
+                val isEof = e.message?.contains("unexpected end of stream", ignoreCase = true) == true ||
+                        e.message?.contains("Connection reset", ignoreCase = true) == true
+                AppLogger.w("PORTAL_FETCH", "<-- FAILED (${hopElapsed}ms) on $currentUrl: ${e.message} (isEofReset=$isEof)", e)
+
+                if (isEof) {
+                    val connectivity = check204Connectivity()
+                    if (connectivity is ConnectivityResult.AlreadyConnected) {
+                        AppLogger.i("PORTAL_FETCH", "Portal dropped connection because client is already authenticated! Connectivity confirmed.")
+                        return@withContext PageFetchResult.AlreadyAuthenticated
+                    }
+
+                    return@withContext PageFetchResult.Error(
+                        "Portal connection was closed by the gateway. If you are already connected, tap Refresh to verify internet."
+                    )
+                }
+
+                return@withContext PageFetchResult.Error(
+                    "Couldn't reach the portal. Check that you're connected to the \"guest\" Wi-Fi network, or check if the portal URL is correct in Settings."
                 )
             } catch (e: Exception) {
                 val hopElapsed = System.currentTimeMillis() - hopStart
@@ -431,7 +466,12 @@ open class PortalClient(
                 AppLogger.i("PORTAL_PARSER", "Portal returned Success Page directly during fetch. User is already authenticated!")
                 return PageFetchResult.AlreadyAuthenticated
             }
-            AppLogger.w("PORTAL_PARSER", "Missing au_pxytimetag input. Network unsupported or already authenticated.")
+            if (htmlAuth is HtmlAuthResult.ExplicitFailure) {
+                AppLogger.w("PORTAL_PARSER", "Portal returned Failure Page directly during fetch: ${htmlAuth.reason}")
+                return PageFetchResult.Error(htmlAuth.reason)
+            }
+            val pageTitle = doc.title().trim()
+            AppLogger.w("PORTAL_PARSER", "Missing au_pxytimetag input in form (Page Title: \"$pageTitle\"). Captive portal template is unsupported by WifiAuto.")
             return PageFetchResult.Error(
                 "This network is not supported. Only Guest is supported. Please log in using your web browser, or contact the developer if you need support."
             )
@@ -519,9 +559,10 @@ open class PortalClient(
                     AppLogger.w("PORTAL_SUBMIT", "Failed to read response body string: ${e.localizedMessage}", e)
                     ""
                 }
+                val htmlSummary = AppLogger.extractHtmlSummary(bodySnippet)
                 AppLogger.i(
                     "PORTAL_SUBMIT",
-                    "<-- POST $actionUrl response: ${response.code} ${response.message} (${submitElapsed}ms)\nHeaders: ${response.headers}\nBody snippet: $bodySnippet"
+                    "<-- POST $actionUrl response: ${response.code} ${response.message} (${submitElapsed}ms)\nHeaders: ${response.headers}\nHTML Summary: $htmlSummary"
                 )
 
                 // Immediate Auth rejection on explicit 4xx error codes
@@ -602,16 +643,17 @@ open class PortalClient(
                 // Evaluate outcome after full backoff window
                 return@withContext when (lastVerifyResult) {
                     is ConnectivityResult.AlreadyConnected -> {
+                        AppLogger.i("PORTAL_SUBMIT", "Post-submission verification confirmed internet access active.")
                         LoginSubmitResult.Success
                     }
                     is ConnectivityResult.CaptiveDetected -> {
-                        AppLogger.w("PORTAL_SUBMIT", "Verification completed: Portal returned authentication rejection or remains captive.")
+                        AppLogger.w("PORTAL_SUBMIT", "Post-submission verification: Gateway continues to intercept HTTP traffic (CaptiveDetected: redirect=${lastVerifyResult.portalRedirectUrl}). Credentials were not accepted or login was not completed.")
                         LoginSubmitResult.AuthFailed(
-                            "Wrong username or password. Check your details and try again."
+                            "Authentication was not accepted by the portal. Check your credentials and try again."
                         )
                     }
                     is ConnectivityResult.Unreachable -> {
-                        AppLogger.w("PORTAL_SUBMIT", "Verification completed: 204 Unreachable.")
+                        AppLogger.w("PORTAL_SUBMIT", "Post-submission verification: 204 Unreachable (${lastVerifyResult.message}).")
                         LoginSubmitResult.NetworkFailed(
                             "Portal submitted, but internet verification was unreachable. Please check your Wi-Fi connection."
                         )

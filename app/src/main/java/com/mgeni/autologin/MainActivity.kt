@@ -22,7 +22,6 @@ class MainActivity : ComponentActivity() {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 val appCtx = applicationContext
-                AppLogger.init(appCtx)
                 return MainViewModel(
                     preferencesManager = PreferencesManager(appCtx),
                     portalClient = PortalClient(),

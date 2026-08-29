@@ -2,6 +2,7 @@ package com.mgeni.autologin
 
 import com.mgeni.autologin.data.AppLogger
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -40,7 +41,7 @@ class AppLoggerTest {
         val formatted = AppLogger.getFormattedLogs()
         assertTrue(formatted.contains("--> POST http://10.10.10.10/login.html"))
         assertTrue(formatted.contains("username=test_user&password=[REDACTED]&ok=Submit"))
-        assertTrue("Plaintext password should NOT appear in logs", !formatted.contains("my_secret_password"))
+        assertFalse("Plaintext password should NOT appear in logs", formatted.contains("my_secret_password"))
     }
 
     @Test
@@ -51,5 +52,29 @@ class AppLoggerTest {
 
         AppLogger.clearLogs()
         assertEquals(0, AppLogger.logCount.value)
+    }
+
+    @Test
+    fun `extractHtmlSummary cleanly summarizes HTML title and heading without javascript alerts`() {
+        val rawHtml = """
+            <html>
+            <head><title>Authentication Proxy Success Page</title></head>
+            <body>
+                <h1>Authentication Successful !</h1>
+                <p class="caption">You can now use all regular services over this network</p>
+                <script type="text/javascript">
+                    alert("Username field cannot be empty");
+                    function DoneButton() { window.location.replace("https://safaricom.co.ke"); }
+                </script>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val summary = AppLogger.extractHtmlSummary(rawHtml)
+        assertTrue(summary.contains("Title: \"Authentication Proxy Success Page\""))
+        assertTrue(summary.contains("H1: \"Authentication Successful !\""))
+        assertTrue(summary.contains("Caption: \"You can now use all regular services over this network\""))
+        assertFalse("Summary must NOT contain inline JavaScript alerts", summary.contains("alert("))
+        assertFalse("Summary must NOT contain JavaScript code", summary.contains("DoneButton"))
     }
 }

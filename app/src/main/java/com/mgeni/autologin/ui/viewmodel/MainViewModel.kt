@@ -92,7 +92,7 @@ class MainViewModel(
                     currentState is MainUiState.About ||
                     currentState is MainUiState.LoginForm
                 ) {
-                    AppLogger.d("VIEW_MODEL", "Network changed while user active on ${currentState::class.simpleName}; preserving view.")
+                    AppLogger.d("VIEW_MODEL", "Wi-Fi event received while user is on ${currentState::class.simpleName}; maintaining current screen.")
                     return@collect
                 }
 
@@ -123,6 +123,7 @@ class MainViewModel(
                     currentState is MainUiState.About ||
                     currentState is MainUiState.LoginForm
                 ) {
+                    AppLogger.d("VIEW_MODEL", "NetworkState changed to $netState while user is on ${currentState::class.simpleName}; maintaining current screen.")
                     return@collect
                 }
 
@@ -197,10 +198,10 @@ class MainViewModel(
             var result = portalClient.check204Connectivity()
 
             // If Wi-Fi is actively establishing connection and first ping returned Unreachable,
-            // retry with backoff to allow DHCP and ARP tables to settle before failing
+            // retry with backoff to allow Wi-Fi routes to stabilize before concluding Unreachable
             if (result is ConnectivityResult.Unreachable && networkMonitor.isWifiActive.value) {
                 for (retry in 1..3) {
-                    AppLogger.i("VIEW_MODEL", "DHCP settlement retry #$retry for 204 connectivity...")
+                    AppLogger.i("VIEW_MODEL", "Wi-Fi route stabilization retry #$retry for connectivity probe...")
                     delay(800L)
                     networkMonitor.updateNetworkStates()
                     portalClient.bindToNetwork(networkMonitor.activeWifiNetwork.value)
@@ -213,7 +214,7 @@ class MainViewModel(
 
             when (result) {
                 is ConnectivityResult.AlreadyConnected -> {
-                    AppLogger.i("VIEW_MODEL", "204 check passed: Internet already active.")
+                    AppLogger.i("VIEW_MODEL", "Connectivity probe confirmed: Internet already active.")
                     if (isUserInitiated && !isModal) {
                         keepCheckingScreenVisible(checkingStartedAt)
                         _uiState.value = MainUiState.AlreadyConnected
@@ -234,7 +235,7 @@ class MainViewModel(
                     handlePortalPageResult(pageResult.await(), isUserInitiated = isUserInitiated)
                 }
                 is ConnectivityResult.Unreachable -> {
-                    AppLogger.w("VIEW_MODEL", "204 unreachable: ${result.message}")
+                    AppLogger.w("VIEW_MODEL", "Connectivity probe unreachable: ${result.message}")
                     val unreachableState = MainUiState.NotOnGuestNetwork(
                         errorMessage = "Make sure you're connected to the \"guest\" Wi-Fi network, or check if the portal URL is correct in Settings."
                     )

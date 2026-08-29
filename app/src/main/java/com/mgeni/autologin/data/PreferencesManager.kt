@@ -45,9 +45,12 @@ open class PreferencesManager(context: Context? = null) {
             ?: (memoryStore[KEY_PORTAL_URL] as? String ?: DEFAULT_PORTAL_URL)
         set(value) {
             val trimmed = value.trim()
+            val previous = portalUrl
             prefs?.edit()?.putString(KEY_PORTAL_URL, trimmed)?.apply()
             memoryStore[KEY_PORTAL_URL] = trimmed
-            AppLogger.i("PREFERENCES", "Portal URL updated to: $trimmed")
+            if (previous != trimmed) {
+                AppLogger.i("PREFERENCES", "Portal URL changed: '$previous' -> '$trimmed'")
+            }
         }
 
     var rememberMe: Boolean
@@ -71,9 +74,12 @@ open class PreferencesManager(context: Context? = null) {
                 ?: ((memoryStore[KEY_SKIP_INITIAL_CHECK] as? Boolean)?.let { !it } ?: true)
         }
         set(value) {
+            val previous = checkInternetOnStartup
             prefs?.edit()?.putBoolean(KEY_CHECK_INTERNET_ON_STARTUP, value)?.apply()
             memoryStore[KEY_CHECK_INTERNET_ON_STARTUP] = value
-            AppLogger.i("PREFERENCES", "checkInternetOnStartup updated to: $value")
+            if (previous != value) {
+                AppLogger.i("PREFERENCES", "checkInternetOnStartup changed: $previous -> $value")
+            }
         }
 
     var skipInitialInternetCheck: Boolean
@@ -128,7 +134,8 @@ open class PreferencesManager(context: Context? = null) {
     }
 
     fun resetPortalUrl() {
-        AppLogger.i("PREFERENCES", "Resetting portal URL to default: $DEFAULT_PORTAL_URL")
+        val previous = portalUrl
+        AppLogger.i("PREFERENCES", "Resetting portal URL to default: '$previous' -> '$DEFAULT_PORTAL_URL'")
         prefs?.edit()?.putString(KEY_PORTAL_URL, DEFAULT_PORTAL_URL)?.apply()
         memoryStore[KEY_PORTAL_URL] = DEFAULT_PORTAL_URL
     }

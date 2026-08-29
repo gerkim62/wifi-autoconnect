@@ -2,11 +2,13 @@ package com.mgeni.autologin.data
 
 import android.content.Context
 import android.os.Build
+import android.os.Process
 import android.util.Log
 import com.mgeni.autologin.BuildConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.jsoup.Jsoup
 import java.io.File
 import java.io.FileWriter
 import java.text.SimpleDateFormat
@@ -53,6 +55,7 @@ object AppLogger {
     private val inMemoryLogQueue = ConcurrentLinkedQueue<LogEntry>()
     private val fileLock = Any()
     private var appContext: Context? = null
+    private var isInitialized = false
 
     private val _logCount = MutableStateFlow(0)
     val logCount: StateFlow<Int> = _logCount.asStateFlow()
@@ -61,14 +64,58 @@ object AppLogger {
         return PASSWORD_PATTERN.replace(input, "$1[REDACTED]")
     }
 
+    /**
+     * Extracts a clean, human-readable summary of an HTML response (Title + Headings + Text),
+     * completely stripped of dormant inline JavaScript alerts, variables, or CSS blocks.
+     */
+    fun extractHtmlSummary(html: String): String {
+        if (html.isBlank()) return "Empty HTML response"
+        return try {
+            val doc = Jsoup.parse(html)
+            val title = doc.title().trim()
+            val h1 = doc.select("h1").text().trim()
+            val h2 = doc.select("h2").text().trim()
+            val caption = doc.select(".caption").text().trim()
+
+            val summary = buildString {
+                if (title.isNotBlank()) append("Title: \"$title\"")
+                if (h1.isNotBlank()) {
+                    if (isNotEmpty()) append(" | ")
+                    append("H1: \"$h1\"")
+                }
+                if (h2.isNotBlank()) {
+                    if (isNotEmpty()) append(" | ")
+                    append("H2: \"$h2\"")
+                }
+                if (caption.isNotBlank()) {
+                    if (isNotEmpty()) append(" | ")
+                    append("Caption: \"$caption\"")
+                }
+                if (isEmpty()) {
+                    val bodyText = doc.body().text().take(120).trim()
+                    append("Text: \"$bodyText\"")
+                }
+            }
+            summary.ifBlank { "HTML (${html.length} bytes)" }
+        } catch (_: Exception) {
+            html.take(120).replace(Regex("""<[^>]*>"""), "").trim()
+        }
+    }
+
     fun init(context: Context) {
-        appContext = context.applicationContext
+        synchronized(fileLock) {
+            appContext = context.applicationContext
+            if (isInitialized) return
+            isInitialized = true
+        }
+
         val totalMemoryMb = Runtime.getRuntime().maxMemory() / (1024 * 1024)
         val tz = TimeZone.getDefault().id
+        val pid = Process.myPid()
 
         val systemHeader = buildString {
             appendLine("================================================================================")
-            appendLine("=== WifiAuto Application Started ===")
+            appendLine("=== WifiAuto Application Started (PID: $pid) ===")
             appendLine("Timestamp:    ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())} ($tz)")
             appendLine("App Version:  v${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE})")
             appendLine("Device:       ${Build.MANUFACTURER} ${Build.MODEL} (${Build.DEVICE})")
@@ -79,6 +126,12 @@ object AppLogger {
         }
 
         i("SYS_INIT", systemHeader)
+    }
+
+    fun resetInitializationForTesting() {
+        synchronized(fileLock) {
+            isInitialized = false
+        }
     }
 
     fun d(tag: String, message: String) = addEntry(LogLevel.DEBUG, tag, message)
