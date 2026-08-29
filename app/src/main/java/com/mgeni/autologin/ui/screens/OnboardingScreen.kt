@@ -56,18 +56,18 @@ private data class OnboardingStep(
 
 private val onboardingSteps = listOf(
     OnboardingStep(
-        title = "No More Daily Logins",
-        description = "The \"guest\" Wi-Fi logs you out every day. WifiAuto signs you in automatically so you never have to retype your username and password.",
+        title = "Tired of Retyping Wi-Fi Password?",
+        description = "The \"guest\" Wi-Fi requires you to enter your username and password every single day.",
         icon = Icons.Outlined.Wifi
     ),
     OnboardingStep(
-        title = "Save Your Login Once",
-        description = "Connect to \"guest\" Wi-Fi and enter your username and password in the app once. They are saved for all future logins.",
+        title = "Save the Logins, Once",
+        description = "Connect to \"guest\" Wi-Fi and enter your username and password in the app once. You'll never have to type them again.",
         icon = Icons.Outlined.Lock
     ),
     OnboardingStep(
         title = "Just Open the App",
-        description = "Whenever you connect to the \"guest\" Wi-Fi, simply open this app. It will log you in automatically instantly.",
+        description = "Whenever you connect to \"guest\" Wi-Fi, simply open this app. It connects you automatically.",
         icon = Icons.Outlined.RocketLaunch
     )
 )
@@ -75,7 +75,6 @@ private val onboardingSteps = listOf(
 /**
  * Pure KISS Onboarding Screen.
  * Minimalist, classic mobile layout: Hero Icon + Title + Single clear paragraph.
- * Zero card containers, zero visual clutter.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
