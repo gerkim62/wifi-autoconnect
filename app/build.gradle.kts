@@ -74,8 +74,12 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.kotlinx.coroutines.android)
 
+    // Background WorkManager (CoroutineWorker is directly in work-runtime since 2.10.0)
+    implementation(libs.androidx.work.runtime)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.work.testing)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

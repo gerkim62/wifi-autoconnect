@@ -1,6 +1,7 @@
 package com.mgeni.autologin.ui
 
 import android.app.Activity
+import com.mgeni.autologin.data.BackgroundManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -104,7 +105,10 @@ fun MgeniApp(
                     }
 
                     OnboardingScreen(
-                        onComplete = { viewModel.completeOnboarding() },
+                        onComplete = { enableNotifications ->
+                            viewModel.completeOnboarding(enableNotifications)
+                            BackgroundManager.registerBackgroundNetworkCallback(context)
+                        },
                         isDismissable = state.previousState != null,
                         onDismiss = { viewModel.dismissOnboarding() }
                     )
@@ -213,18 +217,26 @@ fun MgeniApp(
                     AdvancedSettingsScreen(
                         currentPortalUrl = state.portalUrl,
                         initialCheckInternetOnStartup = state.checkInternetOnStartup,
+                        initialEnableBackgroundAutoLogin = state.enableBackgroundAutoLogin,
+                        initialEnableBackgroundNotifications = state.enableBackgroundNotifications,
                         hasSavedCredentials = state.hasSavedCredentials,
                         errorMessage = state.errorMessage,
                         successMessage = state.successMessage,
                         logCount = logCount,
-                        onSaveClick = { newUrl, checkInternetOnStartup ->
-                            viewModel.saveAdvancedSettings(newUrl, checkInternetOnStartup)
+                        onSaveClick = { newUrl, checkInternetOnStartup, enableAutoLogin, enableNotifications ->
+                            viewModel.saveAdvancedSettings(newUrl, checkInternetOnStartup, enableAutoLogin, enableNotifications)
+                            if (enableAutoLogin) {
+                                BackgroundManager.registerBackgroundNetworkCallback(context)
+                            } else {
+                                BackgroundManager.unregisterBackgroundNetworkCallback(context)
+                            }
                         },
                         onClearCredentialsClick = {
                             viewModel.clearSavedCredentials()
                         },
                         onResetToDefaultClick = {
                             viewModel.resetAdvancedSettingsToDefault()
+                            BackgroundManager.registerBackgroundNetworkCallback(context)
                         },
                         onExportLogsClick = {
                             viewModel.exportLogs(context)

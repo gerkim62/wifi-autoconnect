@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 
+      Base Config: Permits cleartext HTTP across local captive portal gateways and probe endpoints.
+      Security against cleartext data leakage is strictly enforced in application code (PortalClient)
+      by restricting unencrypted HTTP to verified probe endpoints and RFC 1918 private subnets.
+      Trust anchors strictly permit system CAs only (no user CAs).
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

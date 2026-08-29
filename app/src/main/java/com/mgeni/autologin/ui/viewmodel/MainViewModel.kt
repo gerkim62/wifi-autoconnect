@@ -286,7 +286,13 @@ class MainViewModel(
         val portalUrl = if (!redirectHint.isNullOrBlank() && redirectHint.startsWith("http")) {
             redirectHint
         } else {
-            preferencesManager.portalUrl
+            val gatewayIp = networkMonitor.getActiveWifiGatewayIp()
+            if (!gatewayIp.isNullOrBlank()) {
+                AppLogger.d("VIEW_MODEL", "Using dynamically resolved Wi-Fi gateway IP: $gatewayIp")
+                "http://$gatewayIp/login.html"
+            } else {
+                preferencesManager.portalUrl
+            }
         }
 
         return portalClient.fetchLoginPage(portalUrl)
@@ -601,6 +607,8 @@ class MainViewModel(
         _uiState.value = MainUiState.AdvancedSettings(
             portalUrl = currentUrl,
             checkInternetOnStartup = checkInternet,
+            enableBackgroundAutoLogin = preferencesManager.enableBackgroundAutoLogin,
+            enableBackgroundNotifications = preferencesManager.enableBackgroundNotifications,
             hasSavedCredentials = hasSavedCreds,
             isDefault = isDefault,
             errorMessage = null,
@@ -630,7 +638,12 @@ class MainViewModel(
     /**
      * Validates and saves customized Portal URL and preferences in Advanced Settings without forced navigation.
      */
-    fun saveAdvancedSettings(newUrl: String, checkInternetOnStartup: Boolean = true) {
+    fun saveAdvancedSettings(
+        newUrl: String,
+        checkInternetOnStartup: Boolean = true,
+        enableBackgroundAutoLogin: Boolean = true,
+        enableBackgroundNotifications: Boolean = false
+    ) {
         val cleanedUrl = newUrl.trim()
         val parsed = cleanedUrl.toHttpUrlOrNull()
 
@@ -640,6 +653,8 @@ class MainViewModel(
                 _uiState.value = currentSettings.copy(
                     portalUrl = cleanedUrl,
                     checkInternetOnStartup = checkInternetOnStartup,
+                    enableBackgroundAutoLogin = enableBackgroundAutoLogin,
+                    enableBackgroundNotifications = enableBackgroundNotifications,
                     errorMessage = "Please enter a valid URL starting with http:// or https://",
                     successMessage = null
                 )
@@ -649,6 +664,8 @@ class MainViewModel(
 
         preferencesManager.portalUrl = cleanedUrl
         preferencesManager.checkInternetOnStartup = checkInternetOnStartup
+        preferencesManager.enableBackgroundAutoLogin = enableBackgroundAutoLogin
+        preferencesManager.enableBackgroundNotifications = enableBackgroundNotifications
         val isDefault = cleanedUrl == PreferencesManager.DEFAULT_PORTAL_URL
 
         val currentSettings = _uiState.value as? MainUiState.AdvancedSettings
@@ -656,6 +673,8 @@ class MainViewModel(
             _uiState.value = currentSettings.copy(
                 portalUrl = cleanedUrl,
                 checkInternetOnStartup = checkInternetOnStartup,
+                enableBackgroundAutoLogin = enableBackgroundAutoLogin,
+                enableBackgroundNotifications = enableBackgroundNotifications,
                 isDefault = isDefault,
                 errorMessage = null,
                 successMessage = "Settings saved successfully."
@@ -671,12 +690,16 @@ class MainViewModel(
     fun resetAdvancedSettingsToDefault() {
         preferencesManager.resetPortalUrl()
         preferencesManager.checkInternetOnStartup = true
+        preferencesManager.enableBackgroundAutoLogin = true
+        preferencesManager.enableBackgroundNotifications = false
 
         val currentSettings = _uiState.value as? MainUiState.AdvancedSettings
         if (currentSettings != null) {
             _uiState.value = currentSettings.copy(
                 portalUrl = PreferencesManager.DEFAULT_PORTAL_URL,
                 checkInternetOnStartup = true,
+                enableBackgroundAutoLogin = true,
+                enableBackgroundNotifications = false,
                 isDefault = true,
                 errorMessage = null,
                 successMessage = "Settings restored to defaults."
@@ -716,8 +739,9 @@ class MainViewModel(
     /**
      * Completes onboarding flow and persists the completion flag in Preferences.
      */
-    fun completeOnboarding() {
-        AppLogger.i("VIEW_MODEL", "Onboarding completed by user.")
+    fun completeOnboarding(enableNotifications: Boolean = false) {
+        AppLogger.i("VIEW_MODEL", "Onboarding completed by user (enableNotifications=$enableNotifications).")
+        preferencesManager.enableBackgroundNotifications = enableNotifications
         preferencesManager.hasCompletedOnboarding = true
         _uiState.value = MainUiState.CheckingConnection(isTakingLong = false)
         startConnectionCheck(isUserInitiated = true)
@@ -739,7 +763,7 @@ class MainViewModel(
      */
     fun dismissOnboarding() {
         if (!preferencesManager.hasCompletedOnboarding) {
-            completeOnboarding()
+            completeOnboarding(false)
             return
         }
         val previous = (_uiState.value as? MainUiState.Onboarding)?.previousState

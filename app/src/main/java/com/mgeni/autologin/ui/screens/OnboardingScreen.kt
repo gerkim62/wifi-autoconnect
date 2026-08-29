@@ -1,8 +1,14 @@
 package com.mgeni.autologin.ui.screens
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,9 +28,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.RocketLaunch
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -33,11 +40,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,42 +63,66 @@ import kotlinx.coroutines.launch
 private data class OnboardingStep(
     val title: String,
     val description: String,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val isNotificationOptIn: Boolean = false
 )
 
 private val onboardingSteps = listOf(
     OnboardingStep(
         title = "The Problem",
-        description = "The \"guest\" Wi-Fi requires you to enter your username and password every time.",
+        description = "The \"guest\" Wi-Fi requires you to enter your username and password every time you reconnect.",
         icon = Icons.Outlined.Wifi
     ),
     OnboardingStep(
         title = "The Solution",
-        description = "Save the Wi-Fi username and password securely in this app. Once and for all.",
+        description = "Save your Wi-Fi credentials securely in this app. You only have to enter them once.",
         icon = Icons.Outlined.Lock
     ),
     OnboardingStep(
-        title = "How It Works",
-        description = "Whenever you connect to the Wi-Fi, just open this app. It authenticates instantly.",
-        icon = Icons.Outlined.RocketLaunch
+        title = "Background Auto-Login",
+        description = "WifiAuto detects guest captive portals and logs in silently in the background—even if the app is closed.",
+        icon = Icons.Outlined.Autorenew
+    ),
+    OnboardingStep(
+        title = "Stay Informed",
+        description = "Would you like a brief notification whenever WifiAuto logs you in in the background?",
+        icon = Icons.Outlined.Notifications,
+        isNotificationOptIn = true
     )
 )
 
 /**
  * Pure KISS Onboarding Screen.
- * Minimalist, classic mobile layout: Hero Icon + Title + Single clear paragraph.
+ * Minimalist, classic mobile layout: Hero Icon + Title + Single clear paragraph + Optional Notification Opt-in.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OnboardingScreen(
-    onComplete: () -> Unit,
+    onComplete: (enableNotifications: Boolean) -> Unit,
     modifier: Modifier = Modifier,
     isDismissable: Boolean = false,
-    onDismiss: () -> Unit = onComplete
+    onDismiss: () -> Unit = { onComplete(false) }
 ) {
     val pagerState = rememberPagerState(pageCount = { onboardingSteps.size })
     val coroutineScope = rememberCoroutineScope()
     val isLastPage = pagerState.currentPage == onboardingSteps.size - 1
+
+    var wantsNotifications by remember { mutableStateOf(false) }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        wantsNotifications = isGranted
+        onComplete(isGranted)
+    }
+
+    val handleCompletion: () -> Unit = {
+        if (wantsNotifications && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            onComplete(wantsNotifications)
+        }
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -120,7 +156,7 @@ fun OnboardingScreen(
                 }
 
                 if (!isLastPage) {
-                    TextButton(onClick = onComplete) {
+                    TextButton(onClick = { onComplete(false) }) {
                         Text(
                             text = "Skip",
                             style = MaterialTheme.typography.labelLarge.copy(
@@ -192,6 +228,52 @@ fun OnboardingScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
+
+                    if (step.isNotificationOptIn) {
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable { wantsNotifications = !wantsNotifications },
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Notify me on login",
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        ),
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
+                                    Text(
+                                        text = "Subtle alert when Wi-Fi connects. No spam or ongoing icons.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Switch(
+                                    checked = wantsNotifications,
+                                    onCheckedChange = { wantsNotifications = it },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                        checkedTrackColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -259,7 +341,7 @@ fun OnboardingScreen(
                     Button(
                         onClick = {
                             if (isLastPage) {
-                                onComplete()
+                                handleCompletion()
                             } else {
                                 coroutineScope.launch {
                                     pagerState.animateScrollToPage(pagerState.currentPage + 1)
@@ -299,3 +381,4 @@ fun OnboardingScreen(
         }
     }
 }
+

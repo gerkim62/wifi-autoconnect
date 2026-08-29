@@ -1,5 +1,8 @@
 package com.mgeni.autologin.ui.screens
 
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,8 +27,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
+import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.Share
@@ -53,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -79,11 +86,13 @@ import com.mgeni.autologin.ui.theme.EmeraldPrimary
 fun AdvancedSettingsScreen(
     currentPortalUrl: String,
     initialCheckInternetOnStartup: Boolean = true,
+    initialEnableBackgroundAutoLogin: Boolean = true,
+    initialEnableBackgroundNotifications: Boolean = false,
     hasSavedCredentials: Boolean = false,
     errorMessage: String? = null,
     successMessage: String? = null,
     logCount: Int = 0,
-    onSaveClick: (newUrl: String, checkInternetOnStartup: Boolean) -> Unit,
+    onSaveClick: (newUrl: String, checkInternetOnStartup: Boolean, enableBackgroundAutoLogin: Boolean, enableBackgroundNotifications: Boolean) -> Unit,
     onClearCredentialsClick: () -> Unit = {},
     onResetToDefaultClick: () -> Unit,
     onExportLogsClick: () -> Unit = {},
@@ -93,14 +102,19 @@ fun AdvancedSettingsScreen(
 ) {
     var portalUrl by remember(currentPortalUrl) { mutableStateOf(currentPortalUrl) }
     var checkInternetOnStartup by remember(initialCheckInternetOnStartup) { mutableStateOf(initialCheckInternetOnStartup) }
+    var enableBackgroundAutoLogin by remember(initialEnableBackgroundAutoLogin) { mutableStateOf(initialEnableBackgroundAutoLogin) }
+    var enableBackgroundNotifications by remember(initialEnableBackgroundNotifications) { mutableStateOf(initialEnableBackgroundNotifications) }
     var showClearCredsDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showClearLogsDialog by remember { mutableStateOf(false) }
 
     val hasUnsavedChanges = portalUrl.trim() != currentPortalUrl.trim() ||
-        checkInternetOnStartup != initialCheckInternetOnStartup
+        checkInternetOnStartup != initialCheckInternetOnStartup ||
+        enableBackgroundAutoLogin != initialEnableBackgroundAutoLogin ||
+        enableBackgroundNotifications != initialEnableBackgroundNotifications
 
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
     val scrollState = rememberScrollState()
 
     if (showClearCredsDialog) {
@@ -255,7 +269,7 @@ fun AdvancedSettingsScreen(
                     keyboardActions = KeyboardActions(
                         onDone = {
                             focusManager.clearFocus()
-                            onSaveClick(portalUrl, checkInternetOnStartup)
+                            onSaveClick(portalUrl, checkInternetOnStartup, enableBackgroundAutoLogin, enableBackgroundNotifications)
                         }
                     ),
                     shape = RoundedCornerShape(12.dp),
@@ -339,6 +353,145 @@ fun AdvancedSettingsScreen(
                                 checkedTrackColor = MaterialTheme.colorScheme.primary
                             )
                         )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Background Auto-Login Option
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                        .clickable { enableBackgroundAutoLogin = !enableBackgroundAutoLogin }
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Autorenew,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Background auto-login",
+                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = "Sign in automatically in background when connected to guest Wi-Fi.",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Switch(
+                            checked = enableBackgroundAutoLogin,
+                            onCheckedChange = { enableBackgroundAutoLogin = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Background Notifications Option
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                        .clickable { enableBackgroundNotifications = !enableBackgroundNotifications }
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Notifications,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Background notifications",
+                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = "Brief status alert when background sign-in completes.",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Switch(
+                            checked = enableBackgroundNotifications,
+                            onCheckedChange = { enableBackgroundNotifications = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Battery Optimization Info / Shortcut
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                        .clickable {
+                            try {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                    val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                                    context.startActivity(intent)
+                                }
+                            } catch (_: Exception) {}
+                        }
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.BatteryChargingFull,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Battery optimization",
+                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = "Tap to open system battery settings and ensure seamless background triggers.",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
                     }
                 }
 
@@ -496,7 +649,7 @@ fun AdvancedSettingsScreen(
                     text = if (hasUnsavedChanges) "Save Changes" else "Save",
                     onClick = {
                         focusManager.clearFocus()
-                        onSaveClick(portalUrl, checkInternetOnStartup)
+                        onSaveClick(portalUrl, checkInternetOnStartup, enableBackgroundAutoLogin, enableBackgroundNotifications)
                     }
                 )
 

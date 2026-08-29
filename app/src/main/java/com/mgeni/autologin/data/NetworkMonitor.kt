@@ -206,6 +206,16 @@ open class NetworkMonitor(context: Context? = null) {
     }
 
     /**
+     * Resolves the default IPv4 gateway IP address for the currently active Wi-Fi network.
+     */
+    open fun getActiveWifiGatewayIp(): String? {
+        val net = activeWifiNetwork.value ?: return null
+        val lp = synchronized(capabilitiesByNetwork) { linkPropertiesByNetwork[net] }
+            ?: connectivityManager?.getLinkProperties(net)
+        return lp?.routes?.firstOrNull { it.isDefaultRoute && it.gateway != null }?.gateway?.hostAddress
+    }
+
+    /**
      * Testing hook to simulate network interface state transitions without Android Framework dependencies.
      */
     fun emitNetworkStateForTesting(hasWifi: Boolean, hasCellular: Boolean, network: Network? = null) {

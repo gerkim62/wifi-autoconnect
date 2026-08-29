@@ -44,6 +44,8 @@ sealed interface MainUiState {
     data class AdvancedSettings(
         val portalUrl: String,
         val checkInternetOnStartup: Boolean = true,
+        val enableBackgroundAutoLogin: Boolean = true,
+        val enableBackgroundNotifications: Boolean = false,
         val hasSavedCredentials: Boolean = false,
         val isDefault: Boolean = true,
         val errorMessage: String? = null,

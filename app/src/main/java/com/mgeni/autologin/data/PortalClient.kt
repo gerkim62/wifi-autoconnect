@@ -145,6 +145,36 @@ open class PortalClient(
         const val CONNECTIVITY_CHECK_URL = "http://connectivitycheck.gstatic.com/generate_204"
         const val FALLBACK_CONNECTIVITY_URL = "http://clients3.google.com/generate_204"
 
+        private val ALLOWED_PROBE_HOSTS = setOf(
+            "connectivitycheck.gstatic.com",
+            "clients3.google.com",
+            "captive.apple.com"
+        )
+
+        /**
+         * Enforces runtime security: Unencrypted HTTP traffic is strictly permitted ONLY to
+         * verified captive probe endpoints or RFC 1918 / link-local / loopback private LAN addresses.
+         * Arbitrary cleartext HTTP across the public internet is rejected to prevent credential leaks.
+         */
+        fun isPermittedCleartextDestination(url: String): Boolean {
+            val parsed = url.toHttpUrlOrNull() ?: return false
+            if (parsed.scheme.equals("https", ignoreCase = true)) return true
+
+            val host = parsed.host.lowercase()
+            if (ALLOWED_PROBE_HOSTS.contains(host)) return true
+
+            return try {
+                val inetAddress = InetAddress.getByName(host)
+                inetAddress.isSiteLocalAddress ||       // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+                        inetAddress.isLinkLocalAddress ||  // 169.254.0.0/16
+                        inetAddress.isLoopbackAddress ||   // 127.0.0.1
+                        host == "1.1.1.1" || host == "8.8.8.8"
+            } catch (_: Exception) {
+                // Suffix check for unresolvable mDNS / local LAN hostnames
+                host.endsWith(".local") || host.endsWith(".lan") || host.endsWith(".home")
+            }
+        }
+
         fun createDefaultOkHttpClient(network: Network? = null): OkHttpClient {
             val builder = OkHttpClient.Builder()
                 .connectTimeout(12, TimeUnit.SECONDS)
@@ -338,6 +368,11 @@ open class PortalClient(
         AppLogger.i("PORTAL_FETCH", "Starting login page fetch for: $portalUrl")
 
         while (redirectsFollowed < maxRedirects) {
+            if (!isPermittedCleartextDestination(currentUrl)) {
+                AppLogger.w("PORTAL_FETCH", "Blocked cleartext HTTP request to non-private/non-probe domain: $currentUrl")
+                return@withContext PageFetchResult.Error("Cleartext HTTP traffic is only permitted to local private gateway addresses.")
+            }
+
             val request = Request.Builder()
                 .url(currentUrl)
                 .header("User-Agent", "Mozilla/5.0 (Android; Mobile)")
@@ -528,6 +563,13 @@ open class PortalClient(
         connectivityUrl: String = CONNECTIVITY_CHECK_URL,
         onStatusUpdate: ((status: String, detail: String?) -> Unit)? = null
     ): LoginSubmitResult = withContext(Dispatchers.IO) {
+        if (!isPermittedCleartextDestination(actionUrl)) {
+            AppLogger.w("PORTAL_SUBMIT", "Blocked cleartext credential submission to non-private domain: $actionUrl")
+            return@withContext LoginSubmitResult.AuthFailed(
+                "Blocked cleartext transmission: Target server is not a recognized local private gateway."
+            )
+        }
+
         onStatusUpdate?.invoke("Signing in…", "Authenticating…")
 
         val formBody = FormBody.Builder()
