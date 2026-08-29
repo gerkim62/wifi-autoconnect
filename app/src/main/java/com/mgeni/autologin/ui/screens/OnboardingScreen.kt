@@ -62,12 +62,12 @@ private val onboardingSteps = listOf(
     ),
     OnboardingStep(
         title = "The Solution",
-        description = "Save your \"guest\" Wi-Fi username and password in this app. Once and for all.",
+        description = "Save your username and password in this app. Once and for all.",
         icon = Icons.Outlined.Lock
     ),
     OnboardingStep(
         title = "How It Works",
-        description = "Whenever you connect to \"guest\" Wi-Fi, simply open this app. It automatically connects you.",
+        description = "Whenever you connect to the Wi-Fi, simply open this app. It automatically connects you.",
         icon = Icons.Outlined.RocketLaunch
     )
 )
