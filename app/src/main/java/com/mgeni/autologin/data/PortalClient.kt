@@ -398,13 +398,13 @@ open class PortalClient(
                 val hopElapsed = System.currentTimeMillis() - hopStart
                 AppLogger.w("PORTAL_FETCH", "<-- FAILED (${hopElapsed}ms) on $currentUrl: Connection timed out. Target host is not responding.", e)
                 return@withContext PageFetchResult.Error(
-                    "Connection to the portal timed out. Check that you're connected to the \"guest\" Wi-Fi network, or verify the portal URL in Settings."
+                    "Connection to the portal timed out. Check that you're connected to the \"guest\" Wi-Fi network."
                 )
             } catch (e: ConnectException) {
                 val hopElapsed = System.currentTimeMillis() - hopStart
                 AppLogger.w("PORTAL_FETCH", "<-- FAILED (${hopElapsed}ms) on $currentUrl: Connection refused or host unreachable: ${e.message}", e)
                 return@withContext PageFetchResult.Error(
-                    "Could not connect to portal server. Check that you're connected to the \"guest\" Wi-Fi network, or verify the portal URL in Settings."
+                    "Could not connect to portal server. Check that you're connected to the \"guest\" Wi-Fi network."
                 )
             } catch (e: IOException) {
                 val hopElapsed = System.currentTimeMillis() - hopStart
