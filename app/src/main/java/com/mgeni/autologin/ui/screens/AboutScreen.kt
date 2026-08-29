@@ -30,11 +30,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Phone
@@ -66,7 +66,7 @@ import com.mgeni.autologin.ui.theme.EmeraldPrimary
 
 /**
  * Dedicated About & Developer Screen
- * Displays app information, onboarding guide trigger, hobby project background,
+ * Displays app information, onboarding guide trigger,
  * authorization statement, and intuitive clickable contact cards for WhatsApp and GitHub.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -164,13 +164,13 @@ fun AboutScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // App Guide / Onboarding Trigger Card
+            // App Guide / Onboarding Trigger Card (Internal feature card styling)
             if (onAppGuideClick != null) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f))
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
                         .clickable { onAppGuideClick() }
                         .padding(16.dp)
                 ) {
@@ -180,7 +180,7 @@ fun AboutScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(42.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.primary),
                             contentAlignment = Alignment.Center
@@ -201,50 +201,25 @@ fun AboutScreen(
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Quick 3-step guide explaining setup and features",
+                                text = "Interactive 3-step guide explaining setup & automation",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = "Open Guide",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                            modifier = Modifier.size(18.dp)
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
-
-            // Purpose & Inspiration Card
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .padding(16.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Outlined.Favorite,
-                        contentDescription = null,
-                        tint = EmeraldPrimary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Built for fun and as a hobby.",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Authorization & Disclaimer Card (Expandable FAQ Style)
             Box(

@@ -254,7 +254,7 @@ class MainViewModel(
                         _uiState.value = unreachableState
                     } else if (isModal) {
                         updateModalPreviousState(unreachableState)
-                    } else if (!networkMonitor.isWifiActive.value) {
+                    } else {
                         _uiState.value = unreachableState
                     }
                 }
@@ -663,9 +663,10 @@ class MainViewModel(
                 errorMessage = null,
                 successMessage = "Settings restored to defaults."
             )
+            startConnectionCheck(isUserInitiated = false)
+        } else {
+            startConnectionCheck(isUserInitiated = true)
         }
-
-        startConnectionCheck(isUserInitiated = false)
     }
 
     /**

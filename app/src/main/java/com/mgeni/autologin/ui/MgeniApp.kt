@@ -139,6 +139,7 @@ fun MgeniApp(
                         onSettingsClick = { viewModel.openAdvancedSettings() },
                         onAboutClick = { viewModel.openAbout() },
                         onHelpClick = { viewModel.openOnboarding() },
+                        onRestoreDefaultClick = { viewModel.resetAdvancedSettingsToDefault() },
                         onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
                         isRefreshing = isBackgroundChecking
                     )

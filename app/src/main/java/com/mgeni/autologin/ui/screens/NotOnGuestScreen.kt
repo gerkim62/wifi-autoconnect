@@ -1,21 +1,31 @@
 package com.mgeni.autologin.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.SignalCellularAlt
 import androidx.compose.material.icons.outlined.SignalWifiOff
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.mgeni.autologin.data.NetworkState
@@ -29,7 +39,7 @@ import com.mgeni.autologin.ui.components.WarningStatusIcon
 /**
  * Screen 3: Wi-Fi Disconnected / Unreachable Screen
  * Features top bar actions (Gear + Info), pull-to-refresh connectivity check,
- * elevated status card positioning, and bottom action button with generous clearance.
+ * elevated status card positioning, restore to default settings helper, and retry action button.
  */
 @Composable
 fun NotOnGuestScreen(
@@ -39,6 +49,7 @@ fun NotOnGuestScreen(
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
     onHelpClick: (() -> Unit)? = null,
+    onRestoreDefaultClick: (() -> Unit)? = null,
     onRefresh: () -> Unit = onRetryClick,
     isRefreshing: Boolean = false,
     modifier: Modifier = Modifier
@@ -61,7 +72,7 @@ fun NotOnGuestScreen(
         else -> if (errorMessage.isNotBlank() && !errorMessage.contains("Make sure you're connected", ignoreCase = true)) {
             errorMessage
         } else {
-            "Make sure you are connected to the \"guest\" Wi-Fi network (not a different Wi-Fi or private hotspot), or check if the portal URL is correct in Settings."
+            "Make sure you are connected to the \"guest\" Wi-Fi network (not a different Wi-Fi or private hotspot)."
         }
     }
 
@@ -128,6 +139,35 @@ fun NotOnGuestScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
+
+                    if (!isOnlyCellular && !isOffline && !isUnsupported && onRestoreDefaultClick != null) {
+                        Spacer(modifier = Modifier.height(18.dp))
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { onRestoreDefaultClick() }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.RestartAlt,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Restore to default settings",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // Bottom spacer balancing the elevated position

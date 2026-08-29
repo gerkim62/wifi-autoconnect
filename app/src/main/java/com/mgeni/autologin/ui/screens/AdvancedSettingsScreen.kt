@@ -268,11 +268,32 @@ fun AdvancedSettingsScreen(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                Text(
-                    text = "Default: ${PreferencesManager.DEFAULT_PORTAL_URL}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Default: ${PreferencesManager.DEFAULT_PORTAL_URL}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (portalUrl.trim() != PreferencesManager.DEFAULT_PORTAL_URL) {
+                        Text(
+                            text = "Restore default",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable {
+                                    portalUrl = PreferencesManager.DEFAULT_PORTAL_URL
+                                }
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
