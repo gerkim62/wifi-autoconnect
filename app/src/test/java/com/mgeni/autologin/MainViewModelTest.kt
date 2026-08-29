@@ -545,7 +545,7 @@ class MainViewModelTest {
                 return if (isProbeConnected) {
                     PageFetchResult.AlreadyAuthenticated
                 } else {
-                    PageFetchResult.Error("Portal connection was closed by the gateway. If you are already connected, tap Refresh to verify internet.")
+                    PageFetchResult.Error("Connection closed. If you are already connected, tap Refresh to check your internet.")
                 }
             }
         }
@@ -559,7 +559,7 @@ class MainViewModelTest {
         advanceUntilIdle()
         val errorState = viewModel.uiState.value
         assertTrue("Expected NotOnGuestNetwork, got $errorState", errorState is MainUiState.NotOnGuestNetwork)
-        assertTrue((errorState as MainUiState.NotOnGuestNetwork).errorMessage.contains("closed by the gateway"))
+        assertTrue((errorState as MainUiState.NotOnGuestNetwork).errorMessage.contains("Connection closed"))
 
         // User taps Refresh after gateway connection closed
         isProbeConnected = true

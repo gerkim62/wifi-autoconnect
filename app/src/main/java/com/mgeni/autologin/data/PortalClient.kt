@@ -368,10 +368,10 @@ open class PortalClient(
                         }
                     } else {
                         if (!response.isSuccessful) {
-                            val errorMsg = "HTTP $code: Couldn't reach the portal. Check connection to \"guest\" Wi-Fi."
+                            val errorMsg = "HTTP $code: Couldn't reach the login page. Check connection to \"guest\" Wi-Fi."
                             AppLogger.w("PORTAL_FETCH", errorMsg)
                             return@withContext PageFetchResult.Error(
-                                "Couldn't reach the portal. Check that you're connected to the \"guest\" Wi-Fi network, or check if the portal URL is correct."
+                                "Couldn't reach the login page. Make sure you're connected to the \"guest\" Wi-Fi network, then try again."
                             )
                         }
 
@@ -392,19 +392,19 @@ open class PortalClient(
                 }
 
                 return@withContext PageFetchResult.Error(
-                    "Portal connection was closed by the gateway. If you are already connected, tap Refresh to verify internet."
+                    "Connection closed. If you are already connected, tap Refresh to check your internet."
                 )
             } catch (e: SocketTimeoutException) {
                 val hopElapsed = System.currentTimeMillis() - hopStart
                 AppLogger.w("PORTAL_FETCH", "<-- FAILED (${hopElapsed}ms) on $currentUrl: Connection timed out. Target host is not responding.", e)
                 return@withContext PageFetchResult.Error(
-                    "Connection to the portal timed out. Check that you're connected to the \"guest\" Wi-Fi network."
+                    "Connection timed out. Make sure you're connected to the \"guest\" Wi-Fi network, then try again."
                 )
             } catch (e: ConnectException) {
                 val hopElapsed = System.currentTimeMillis() - hopStart
                 AppLogger.w("PORTAL_FETCH", "<-- FAILED (${hopElapsed}ms) on $currentUrl: Connection refused or host unreachable: ${e.message}", e)
                 return@withContext PageFetchResult.Error(
-                    "Could not connect to portal server. Check that you're connected to the \"guest\" Wi-Fi network."
+                    "Could not connect. Make sure you're connected to the \"guest\" Wi-Fi network, then try again."
                 )
             } catch (e: IOException) {
                 val hopElapsed = System.currentTimeMillis() - hopStart
@@ -420,18 +420,18 @@ open class PortalClient(
                     }
 
                     return@withContext PageFetchResult.Error(
-                        "Portal connection was closed by the gateway. If you are already connected, tap Refresh to verify internet."
+                        "Connection closed. If you are already connected, tap Refresh to check your internet."
                     )
                 }
 
                 return@withContext PageFetchResult.Error(
-                    "Couldn't reach the portal. Check that you're connected to the \"guest\" Wi-Fi network, or check if the portal URL is correct in Settings."
+                    "Couldn't reach the login page. Make sure you're connected to the \"guest\" Wi-Fi network, then try again."
                 )
             } catch (e: Exception) {
                 val hopElapsed = System.currentTimeMillis() - hopStart
                 AppLogger.e("PORTAL_FETCH", "<-- ERROR (${hopElapsed}ms) on $currentUrl: ${e.localizedMessage}", e)
                 return@withContext PageFetchResult.Error(
-                    e.localizedMessage ?: "Unexpected error connecting to the portal."
+                    e.localizedMessage ?: "Unexpected connection error. Please try again."
                 )
             }
 
@@ -444,7 +444,7 @@ open class PortalClient(
         }
 
         AppLogger.w("PORTAL_FETCH", "Exceeded max redirects ($maxRedirects) or could not load login page.")
-        return@withContext PageFetchResult.Error("Could not load captive portal login page.")
+        return@withContext PageFetchResult.Error("Could not load the login page. Please try again.")
     }
 
     /**
@@ -453,7 +453,7 @@ open class PortalClient(
     open fun parseLoginPage(html: String, baseUrl: String): PageFetchResult {
         if (html.isBlank()) {
             AppLogger.w("PORTAL_PARSER", "Portal returned blank HTML response.")
-            return PageFetchResult.Error("The portal returned an empty response.")
+            return PageFetchResult.Error("Received an empty response. Please try again.")
         }
 
         val doc = Jsoup.parse(html, baseUrl)

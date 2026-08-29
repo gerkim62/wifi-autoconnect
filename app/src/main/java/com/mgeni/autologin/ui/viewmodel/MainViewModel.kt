@@ -108,7 +108,7 @@ class MainViewModel(
                     checkJob?.cancel()
                     _isBackgroundChecking.value = false
                     _uiState.value = MainUiState.NotOnGuestNetwork(
-                        errorMessage = "Make sure you're connected to the \"guest\" Wi-Fi network, or check if the portal URL is correct in Settings."
+                        errorMessage = "Make sure you're connected to the \"guest\" Wi-Fi network, or check Settings."
                     )
                 } else {
                     // Wi-Fi connected or changed: run dynamic non-intrusive background check
@@ -252,7 +252,7 @@ class MainViewModel(
                 is ConnectivityResult.Unreachable -> {
                     AppLogger.w("VIEW_MODEL", "Connectivity probe unreachable: ${result.message}")
                     val unreachableState = MainUiState.NotOnGuestNetwork(
-                        errorMessage = "Make sure you're connected to the \"guest\" Wi-Fi network, or check if the portal URL is correct in Settings."
+                        errorMessage = "Make sure you're connected to the \"guest\" Wi-Fi network, or check Settings."
                     )
                     if (isUserInitiated && !isModal) {
                         keepCheckingScreenVisible(checkingStartedAt)
