@@ -147,6 +147,7 @@ fun MgeniApp(
                 is MainUiState.Connecting -> {
                     ConnectingScreen(
                         statusMessage = state.statusMessage,
+                        detailMessage = state.detailMessage,
                         isTakingLong = state.isTakingLong,
                         onSettingsClick = { viewModel.openAdvancedSettings() },
                         onAboutClick = { viewModel.openAbout() }

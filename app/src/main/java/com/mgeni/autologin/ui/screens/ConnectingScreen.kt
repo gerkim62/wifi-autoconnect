@@ -33,6 +33,7 @@ import com.mgeni.autologin.ui.theme.EmeraldPrimary
 @Composable
 fun ConnectingScreen(
     statusMessage: String = "Logging in…",
+    detailMessage: String? = null,
     isTakingLong: Boolean = false,
     onSettingsClick: () -> Unit = {},
     onAboutClick: () -> Unit = {},
@@ -76,9 +77,10 @@ fun ConnectingScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Authenticating with Wi-Fi portal…",
+                text = detailMessage ?: "Authenticating with Wi-Fi portal…",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
             )
 
             AnimatedVisibility(visible = isTakingLong) {

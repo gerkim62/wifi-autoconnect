@@ -26,6 +26,7 @@ sealed interface MainUiState {
     // 5. Connecting screen
     data class Connecting(
         val statusMessage: String = "Logging in…",
+        val detailMessage: String? = null,
         val isTakingLong: Boolean = false
     ) : MainUiState
 

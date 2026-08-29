@@ -239,8 +239,8 @@ class MainViewModelTest {
                 username: String,
                 password: String,
                 timeTag: String,
-                redirectUrl: String,
-                connectivityUrl: String
+                redirectUrl: String,                connectivityUrl: String,
+                onStatusUpdate: ((String, String?) -> Unit)?
             ): LoginSubmitResult {
                 return LoginSubmitResult.AuthFailed("Wrong username or password. Check your details and try again.")
             }
@@ -291,7 +291,8 @@ class MainViewModelTest {
                 password: String,
                 timeTag: String,
                 redirectUrl: String,
-                connectivityUrl: String
+                connectivityUrl: String,
+                onStatusUpdate: ((String, String?) -> Unit)?
             ): LoginSubmitResult {
                 return LoginSubmitResult.NetworkFailed("Could not reach portal during submission.")
             }

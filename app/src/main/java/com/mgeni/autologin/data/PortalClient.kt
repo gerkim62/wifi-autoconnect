@@ -27,6 +27,12 @@ sealed interface PageFetchResult {
     data class Error(val message: String) : PageFetchResult
 }
 
+sealed interface HtmlAuthResult {
+    data class ExplicitFailure(val reason: String = "Wrong username or password. Check your details and try again.") : HtmlAuthResult
+    data object ExplicitSuccess : HtmlAuthResult
+    data object Unknown : HtmlAuthResult
+}
+
 sealed interface LoginSubmitResult {
     data object Success : LoginSubmitResult
     data class AuthFailed(val message: String) : LoginSubmitResult
@@ -60,6 +66,40 @@ open class PortalClient(
 
             return builder.build()
         }
+    }
+
+    /**
+     * Inspects the HTML response body returned by the captive portal POST submission
+     * to identify explicit Cisco IOS Auth Proxy (and standard portal) success or failure indicators.
+     */
+    open fun inspectAuthResponseHtml(html: String): HtmlAuthResult {
+        if (html.isBlank()) return HtmlAuthResult.Unknown
+        val lowerHtml = html.lowercase()
+
+        // Cisco IOS Authentication Proxy Failure Page and common captive portal rejection indicators
+        val isExplicitFailure = lowerHtml.contains("authentication failed") ||
+                lowerHtml.contains("authentication proxy failed") ||
+                lowerHtml.contains("invalid username or password") ||
+                lowerHtml.contains("login failed") ||
+                lowerHtml.contains("credentials rejected")
+
+        if (isExplicitFailure) {
+            return HtmlAuthResult.ExplicitFailure()
+        }
+
+        // Cisco IOS Authentication Proxy Success Page and common captive portal approval indicators
+        val isExplicitSuccess = lowerHtml.contains("authentication successful") ||
+                lowerHtml.contains("authentication proxy success") ||
+                lowerHtml.contains("login successful") ||
+                lowerHtml.contains("connection established") ||
+                lowerHtml.contains("you are now logged in") ||
+                lowerHtml.contains("logged in successfully")
+
+        if (isExplicitSuccess) {
+            return HtmlAuthResult.ExplicitSuccess
+        }
+
+        return HtmlAuthResult.Unknown
     }
 
     /**
@@ -261,8 +301,8 @@ open class PortalClient(
     }
 
     /**
-     * Submits credentials to the portal and performs exponential backoff verification checks
-     * to ensure the router firewall has applied routing rules without premature false-failures.
+     * Submits credentials to the portal, inspects the response HTML for Cisco IOS Auth Proxy
+     * success/failure indicators, and runs connectivity verification checks.
      */
     open suspend fun submitLogin(
         actionUrl: String,
@@ -270,7 +310,8 @@ open class PortalClient(
         password: String,
         timeTag: String,
         redirectUrl: String = "",
-        connectivityUrl: String = CONNECTIVITY_CHECK_URL
+        connectivityUrl: String = CONNECTIVITY_CHECK_URL,
+        onStatusUpdate: ((status: String, detail: String?) -> Unit)? = null
     ): LoginSubmitResult = withContext(Dispatchers.IO) {
         val formBody = FormBody.Builder()
             .add("username", username)
@@ -293,11 +334,12 @@ open class PortalClient(
             "--> POST $actionUrl\nPayload: username=$username, password=[REDACTED], au_pxytimetag=$timeTag, redirect_url=$redirectUrl, ok=Submit"
         )
 
+        var bodySnippet = ""
         try {
             client.newCall(postRequest).execute().use { response ->
                 val submitElapsed = System.currentTimeMillis() - submitStart
-                val bodySnippet = try {
-                    response.body?.string().orEmpty().take(2000)
+                bodySnippet = try {
+                    response.body?.string().orEmpty().take(4000)
                 } catch (e: Exception) {
                     AppLogger.w("PORTAL_SUBMIT", "Failed to read response body string: ${e.localizedMessage}", e)
                     ""
@@ -323,38 +365,95 @@ open class PortalClient(
             )
         }
 
-        AppLogger.i("PORTAL_SUBMIT", "Beginning exponential backoff connectivity verification...")
-        // Snappy exponential backoff delays (150ms, 300ms, 600ms, 1200ms)
-        val backoffDelays = longArrayOf(150L, 300L, 600L, 1200L)
-        var lastVerifyResult: ConnectivityResult = ConnectivityResult.Unreachable("Verifying...")
+        // Inspect HTML response body for Cisco IOS Auth Proxy (and standard) indicators
+        val htmlAuth = inspectAuthResponseHtml(bodySnippet)
+        AppLogger.i("PORTAL_SUBMIT", "HTML Auth Inspection Result: $htmlAuth")
 
-        for ((index, backoffMs) in backoffDelays.withIndex()) {
-            delay(backoffMs)
-            AppLogger.i("PORTAL_SUBMIT", "Verification ping attempt #${index + 1} (after ${backoffMs}ms)...")
-            lastVerifyResult = check204Connectivity(connectivityUrl)
+        when (htmlAuth) {
+            is HtmlAuthResult.ExplicitFailure -> {
+                AppLogger.w("PORTAL_SUBMIT", "Portal HTML reported explicit rejection: ${htmlAuth.reason}. Running single 204 connectivity check to verify...")
+                onStatusUpdate?.invoke("Authentication Rejected", "Portal reported wrong credentials. Verifying connectivity anyway…")
 
-            if (lastVerifyResult is ConnectivityResult.AlreadyConnected) {
-                AppLogger.i("PORTAL_SUBMIT", "Login verified on attempt #${index + 1}: 204 returned! Internet active.")
-                return@withContext LoginSubmitResult.Success
-            }
-        }
+                delay(150L)
+                val verifyResult = check204Connectivity(connectivityUrl)
+                if (verifyResult is ConnectivityResult.AlreadyConnected) {
+                    AppLogger.i("PORTAL_SUBMIT", "Unexpected: 204 succeeded despite failure HTML. Internet is active.")
+                    return@withContext LoginSubmitResult.Success
+                }
 
-        // Evaluate outcome after full backoff window
-        when (lastVerifyResult) {
-            is ConnectivityResult.AlreadyConnected -> {
-                LoginSubmitResult.Success
+                AppLogger.w("PORTAL_SUBMIT", "Rejection confirmed by connectivity check. Returning AuthFailed immediately.")
+                return@withContext LoginSubmitResult.AuthFailed(htmlAuth.reason)
             }
-            is ConnectivityResult.CaptiveDetected -> {
-                AppLogger.w("PORTAL_SUBMIT", "Verification completed: Portal returned authentication rejection or remains captive.")
-                LoginSubmitResult.AuthFailed(
-                    "Wrong username or password. Check your details and try again."
-                )
+
+            is HtmlAuthResult.ExplicitSuccess -> {
+                AppLogger.i("PORTAL_SUBMIT", "Portal HTML reported explicit success! Verifying internet connectivity...")
+                onStatusUpdate?.invoke("Authentication Approved", "Portal accepted credentials. Verifying connectivity…")
+
+                delay(150L)
+                var verifyResult = check204Connectivity(connectivityUrl)
+                if (verifyResult is ConnectivityResult.AlreadyConnected) {
+                    AppLogger.i("PORTAL_SUBMIT", "Internet verified immediately on success HTML!")
+                    return@withContext LoginSubmitResult.Success
+                }
+
+                // Give the router firewall a brief moment to open up routes
+                delay(400L)
+                verifyResult = check204Connectivity(connectivityUrl)
+                if (verifyResult is ConnectivityResult.AlreadyConnected) {
+                    AppLogger.i("PORTAL_SUBMIT", "Internet verified on retry after success HTML!")
+                    return@withContext LoginSubmitResult.Success
+                }
+
+                return@withContext when (verifyResult) {
+                    is ConnectivityResult.AlreadyConnected -> LoginSubmitResult.Success
+                    is ConnectivityResult.CaptiveDetected -> {
+                        AppLogger.w("PORTAL_SUBMIT", "Portal reported success but network remains captive.")
+                        LoginSubmitResult.AuthFailed("Portal accepted credentials, but internet access is not yet open. Please try again.")
+                    }
+                    is ConnectivityResult.Unreachable -> {
+                        AppLogger.w("PORTAL_SUBMIT", "Portal reported success but 204 is unreachable.")
+                        LoginSubmitResult.NetworkFailed("Portal accepted credentials, but internet check was unreachable. Check your Wi-Fi connection.")
+                    }
+                }
             }
-            is ConnectivityResult.Unreachable -> {
-                AppLogger.w("PORTAL_SUBMIT", "Verification completed: 204 Unreachable.")
-                LoginSubmitResult.NetworkFailed(
-                    "Portal submitted, but internet verification was unreachable. Please check your Wi-Fi connection."
-                )
+
+            is HtmlAuthResult.Unknown -> {
+                AppLogger.i("PORTAL_SUBMIT", "HTML body did not match explicit auth templates. Beginning exponential backoff connectivity verification...")
+                onStatusUpdate?.invoke("Verifying Connectivity", "Checking if internet access is active…")
+
+                // Snappy exponential backoff delays (150ms, 300ms, 600ms, 1200ms)
+                val backoffDelays = longArrayOf(150L, 300L, 600L, 1200L)
+                var lastVerifyResult: ConnectivityResult = ConnectivityResult.Unreachable("Verifying...")
+
+                for ((index, backoffMs) in backoffDelays.withIndex()) {
+                    delay(backoffMs)
+                    AppLogger.i("PORTAL_SUBMIT", "Verification ping attempt #${index + 1} (after ${backoffMs}ms)...")
+                    lastVerifyResult = check204Connectivity(connectivityUrl)
+
+                    if (lastVerifyResult is ConnectivityResult.AlreadyConnected) {
+                        AppLogger.i("PORTAL_SUBMIT", "Login verified on attempt #${index + 1}: 204 returned! Internet active.")
+                        return@withContext LoginSubmitResult.Success
+                    }
+                }
+
+                // Evaluate outcome after full backoff window
+                return@withContext when (lastVerifyResult) {
+                    is ConnectivityResult.AlreadyConnected -> {
+                        LoginSubmitResult.Success
+                    }
+                    is ConnectivityResult.CaptiveDetected -> {
+                        AppLogger.w("PORTAL_SUBMIT", "Verification completed: Portal returned authentication rejection or remains captive.")
+                        LoginSubmitResult.AuthFailed(
+                            "Wrong username or password. Check your details and try again."
+                        )
+                    }
+                    is ConnectivityResult.Unreachable -> {
+                        AppLogger.w("PORTAL_SUBMIT", "Verification completed: 204 Unreachable.")
+                        LoginSubmitResult.NetworkFailed(
+                            "Portal submitted, but internet verification was unreachable. Please check your Wi-Fi connection."
+                        )
+                    }
+                }
             }
         }
     }

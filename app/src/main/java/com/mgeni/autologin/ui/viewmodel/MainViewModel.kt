@@ -421,7 +421,19 @@ class MainViewModel(
                 username = username,
                 password = password,
                 timeTag = timeTag,
-                redirectUrl = redirectUrl
+                redirectUrl = redirectUrl,
+                onStatusUpdate = { status, detail ->
+                    if (isUserInitiated && !isModal) {
+                        if (_uiState.value is MainUiState.Connecting) {
+                            _uiState.value = (_uiState.value as MainUiState.Connecting).copy(
+                                statusMessage = status,
+                                detailMessage = detail
+                            )
+                        }
+                    } else {
+                        _backgroundStatusMessage.value = detail ?: status
+                    }
+                }
             )
         } catch (e: Exception) {
             AppLogger.e("VIEW_MODEL", "executeLogin exception: ${e.localizedMessage}", e)

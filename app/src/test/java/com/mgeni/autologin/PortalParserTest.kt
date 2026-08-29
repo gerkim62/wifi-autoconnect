@@ -108,4 +108,44 @@ class PortalParserTest {
         assertEquals("http://10.10.10.10/login.html", success.actionUrl)
         assertEquals("token_switch_123", success.timeTag)
     }
+
+    @Test
+    fun `inspectAuthResponseHtml detects Cisco IOS Authentication Proxy Failed Page`() {
+        val ciscoFailedHtml = """
+            <html>
+            <head><title>Authentication Proxy Failed Page</title></head>
+            <body>
+                <h1>Authentication Failed !</h1>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val result = portalClient.inspectAuthResponseHtml(ciscoFailedHtml)
+        assertTrue("Expected ExplicitFailure, got $result", result is com.mgeni.autologin.data.HtmlAuthResult.ExplicitFailure)
+    }
+
+    @Test
+    fun `inspectAuthResponseHtml detects Cisco IOS Authentication Proxy Success Page`() {
+        val ciscoSuccessHtml = """
+            <html>
+            <head><title>Authentication Proxy Success Page</title></head>
+            <body>
+                <h1>Authentication Successful !</h1>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val result = portalClient.inspectAuthResponseHtml(ciscoSuccessHtml)
+        assertTrue("Expected ExplicitSuccess, got $result", result is com.mgeni.autologin.data.HtmlAuthResult.ExplicitSuccess)
+    }
+
+    @Test
+    fun `inspectAuthResponseHtml returns Unknown for generic or empty HTML`() {
+        val genericHtml = "<html><body><p>Hello world</p></body></html>"
+        val result1 = portalClient.inspectAuthResponseHtml(genericHtml)
+        assertTrue(result1 is com.mgeni.autologin.data.HtmlAuthResult.Unknown)
+
+        val result2 = portalClient.inspectAuthResponseHtml("")
+        assertTrue(result2 is com.mgeni.autologin.data.HtmlAuthResult.Unknown)
+    }
 }

@@ -100,25 +100,101 @@ function getSuccessHtml(username, redirectUrl) {
     return `<!DOCTYPE html>
 <html>
 <head>
-    <title>Authentication Successful</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0fdf4; color: #166534; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 2.5rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); text-align: center; max-width: 420px; width: 90%; }
-        .icon { width: 64px; height: 64px; background: #dcfce7; color: #16a34a; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 32px; }
-        h1 { margin: 0 0 0.5rem; font-size: 1.5rem; color: #15803d; }
-        p { margin: 0.5rem 0; color: #4b5563; font-size: 0.95rem; }
-        .badge { display: inline-block; background: #f3f4f6; padding: 4px 12px; border-radius: 6px; font-family: monospace; font-weight: bold; color: #1f2937; margin: 8px 0; }
-    </style>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" name="viewport" content="width=device-width, initial-scale=1">
+<title>Authentication Proxy Success Page</title>
+<style>
+<!--
+h1 {
+   font-family: Tahoma, Arial, Helvetica, sans-serif;
+   color: #15803d;
+   font-size: 20px;
+   font-weight: bold;
+   margin-bottom: 10px;
+}
+p {
+   font-family: Arial, Helvetica, sans-serif;
+   font-size: 14px;
+   color: #333333;
+}
+-->
+</style>
 </head>
-<body>
-    <div class="card">
-        <div class="icon">✓</div>
-        <h1>Logged In Successfully</h1>
-        <p>User <span class="badge">${username || 'Guest'}</span> is now authenticated.</p>
-        ${redirectUrl ? `<p style="font-size:0.85rem;color:#6b7280;">Redirect: ${redirectUrl}</p>` : ''}
-        <p style="margin-top:1.5rem;font-size:0.85rem;color:#9ca3af;">Captive Portal Mock Server</p>
-    </div>
+<body bgcolor="#F0FDF4" topmargin="50" marginheight="50">
+<div align="center">
+<h1>Authentication Successful !</h1>
+<p>User <strong>${username || 'guest'}</strong> is authenticated.</p>
+${redirectUrl ? `<p><a href="${redirectUrl}">Continue to destination</a></p>` : ''}
+</div>
+</body>
+</html>`;
+}
+
+function getFailedHtml() {
+    return `<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8" name="viewport" content="width=device-width, initial-scale=1">
+<head>
+<title>Authentication Proxy Failed Page</title>
+<style>
+<!-- 
+h1 {
+   font-family: Tahoma, Arial, Helvetica, sans-serif;
+   color: #787a7f;
+   font-size: 19px;
+   font-weight: bold;
+   margin-bottom: 10px;
+}
+td {
+   font-family: Arial, Helvetica, sans-serif;
+   font-size: 13px;
+   font-weight: bold;
+   color: #336699;
+   padding: 10px 5px 0px 0px;
+}
+td.caption {
+   font-size: 12px;
+   font-weight: normal;
+   color: #000000;
+   padding: 2px;
+}
+input.button {
+   font-family: Arial, Helvetica, sans-serif;
+   font-size: 12px;
+   font-weight: bold;
+   background-color: #c9cbd4; 
+   color: #333333; 
+   width: 80px;
+}
+-->
+</style>
+
+<script type="text/javascript">
+    var donesubmitted = false;
+    function DoneButton() {
+	   if (donesubmitted == false) {
+	       donesubmitted = true;
+		 window.location.reload();
+		 window.close();
+	   }
+    }
+	   setTimeout("DoneButton()", 5000);
+</script>
+</head>
+<body bgcolor="#DADCE5" topmargin="50" marginheight="50">
+<div align="center">
+<h1></h1>
+<h1>Authentication Failed !</h1><br>
+<table border ="0" cellspacing ="0" cellpadding ="0">
+<tr>
+<td align="center" class="caption" width ="340"></td> </tr><tr><td class="caption">&nbsp;</td></tr></table><FORM>
+  <input type=button name=enter value=DONE onClick="DoneButton();">
+</FORM>
+<noscript>
+<BR>
+<UL>
+  <H2><FONT COLOR="red">Warning!</FONT></H2>
+  <p>JavaScript should be enabled in your Web browser for secure authentication</p>
+</UL>
+</noscript>
+</div>
 </body>
 </html>`;
 }
@@ -275,8 +351,15 @@ const server = http.createServer(async (req, res) => {
         requestHistory.unshift(logEntry);
         if (requestHistory.length > MAX_HISTORY) requestHistory.pop();
 
-        // Mark authenticated
-        isAuthenticated = true;
+        const username = parsed ? String(parsed.username || '').trim() : '';
+        const password = parsed ? String(parsed.password || '') : '';
+        const redirectUrl = parsed ? (parsed.redirect_url || '') : '';
+
+        // Validate credentials: guest/guest123 or test/test123
+        const isAuthed = (username === 'guest' && password === 'guest123') ||
+                         (username === 'test' && password === 'test123');
+
+        isAuthenticated = isAuthed;
 
         // Print Rich Box in Terminal
         const bodyLines = [];
@@ -297,20 +380,26 @@ const server = http.createServer(async (req, res) => {
         }
 
         bodyLines.push('───────────────────────────────────────────────────────');
-        bodyLines.push(`${colors.bold}Auth Status:${colors.reset}  ${colors.green}✓ AUTHENTICATED (Next 204 check will succeed)${colors.reset}`);
 
-        logBox('CAPTIVE PORTAL LOGIN SUBMISSION RECEIVED', bodyLines, colors.green);
+        if (isAuthed) {
+            bodyLines.push(`${colors.bold}Auth Status:${colors.reset}  ${colors.green}✓ AUTHENTICATED (Next 204 check will succeed)${colors.reset}`);
+            logBox('CAPTIVE PORTAL LOGIN SUBMISSION (APPROVED)', bodyLines, colors.green);
 
-        // Respond with success HTML or redirect
-        const username = parsed ? (parsed.username || '') : '';
-        const redirectUrl = parsed ? (parsed.redirect_url || '') : '';
-        const successHtml = getSuccessHtml(username, redirectUrl);
+            res.writeHead(200, {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cache-Control': 'no-cache'
+            });
+            return res.end(getSuccessHtml(username, redirectUrl));
+        } else {
+            bodyLines.push(`${colors.bold}Auth Status:${colors.reset}  ${colors.red}✗ REJECTED (Cisco IOS Failed Page returned)${colors.reset}`);
+            logBox('CAPTIVE PORTAL LOGIN SUBMISSION (REJECTED)', bodyLines, colors.red);
 
-        res.writeHead(200, {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Cache-Control': 'no-cache'
-        });
-        return res.end(successHtml);
+            res.writeHead(200, {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cache-Control': 'no-cache'
+            });
+            return res.end(getFailedHtml());
+        }
     }
 
     // 5. Handle GET (Serve Portal HTML or static assets)
@@ -366,6 +455,11 @@ server.listen(PORT, HOST, () => {
         `${colors.bold}Local URL:${colors.reset}         http://localhost:${PORT}/login.html`,
         `${colors.bold}Live Web Inspector:${colors.reset} http://localhost:${PORT}/inspect`,
         `${colors.bold}Reset State:${colors.reset}       http://localhost:${PORT}/reset`,
+        ``,
+        `${colors.bold}Accepted Demo Credentials:${colors.reset}`,
+        `   • ${colors.green}Username: guest / Password: guest123${colors.reset}`,
+        `   • ${colors.green}Username: test  / Password: test123${colors.reset}`,
+        `   ${colors.dim}(Any other credentials simulate Cisco "Authentication Failed !")${colors.reset}`,
         ``,
         `${colors.bold}📱 Device & Android URLs:${colors.reset}`,
         `   • Android Emulator:   ${colors.cyan}http://10.0.2.2:${PORT}/login.html${colors.reset}`,
