@@ -196,7 +196,7 @@ fun LoginScreen(
                         )
 
                         Text(
-                            text = "Enter credentials for the \"guest\" Wi-Fi network to sign in",
+                            text = "Enter credentials for the \"guest\" Wi-Fi",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center

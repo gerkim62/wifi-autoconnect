@@ -40,6 +40,7 @@ import com.mgeni.autologin.ui.theme.EmeraldPrimary
  */
 @Composable
 fun SplashScreen(
+    message: String = "Checking connection…",
     isTakingLong: Boolean = false,
     onSettingsClick: () -> Unit = {},
     onAboutClick: () -> Unit = {},
@@ -87,7 +88,7 @@ fun SplashScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Checking connection…",
+                text = message,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -3,7 +3,8 @@ package com.mgeni.autologin.ui.viewmodel
 sealed interface MainUiState {
     // 1. Splash / Initial Checking connection screen (Foreground launch / manual retry)
     data class CheckingConnection(
-        val isTakingLong: Boolean = false
+        val isTakingLong: Boolean = false,
+        val message: String = "Checking connection…"
     ) : MainUiState
 
     // 2. Already connected screen

@@ -528,6 +528,8 @@ open class PortalClient(
         connectivityUrl: String = CONNECTIVITY_CHECK_URL,
         onStatusUpdate: ((status: String, detail: String?) -> Unit)? = null
     ): LoginSubmitResult = withContext(Dispatchers.IO) {
+        onStatusUpdate?.invoke("Signing in…", "Authenticating…")
+
         val formBody = FormBody.Builder()
             .add("username", username)
             .add("password", password)
@@ -577,7 +579,7 @@ open class PortalClient(
             val submitElapsed = System.currentTimeMillis() - submitStart
             AppLogger.e("PORTAL_SUBMIT", "<-- POST FAILED (${submitElapsed}ms): ${e.localizedMessage}", e)
             return@withContext LoginSubmitResult.NetworkFailed(
-                "Could not reach portal during submission. Please check connection and try again."
+                "Could not complete sign-in. Please check connection and try again."
             )
         }
 
@@ -588,7 +590,7 @@ open class PortalClient(
         when (htmlAuth) {
             is HtmlAuthResult.ExplicitFailure -> {
                 AppLogger.w("PORTAL_SUBMIT", "Portal HTML reported explicit rejection: ${htmlAuth.reason}. Running single 204 connectivity check to verify...")
-                onStatusUpdate?.invoke("Authentication Rejected", "Portal reported wrong credentials. Verifying connectivity anyway…")
+                onStatusUpdate?.invoke("Authentication Failed", "Verifying credentials…")
 
                 delay(150L)
                 val verifyResult = check204Connectivity(connectivityUrl)
@@ -603,7 +605,7 @@ open class PortalClient(
 
             is HtmlAuthResult.ExplicitSuccess -> {
                 AppLogger.i("PORTAL_SUBMIT", "Portal HTML reported explicit success: Authentication Successful! Credentials confirmed by gateway.")
-                onStatusUpdate?.invoke("Authentication Approved", "Portal accepted credentials. Activating internet…")
+                onStatusUpdate?.invoke("Connected", "Activating internet access…")
 
                 // Run quick non-fatal verification pings
                 val backoffDelays = longArrayOf(150L, 300L, 600L)
@@ -623,7 +625,7 @@ open class PortalClient(
 
             is HtmlAuthResult.Unknown -> {
                 AppLogger.i("PORTAL_SUBMIT", "HTML body did not match explicit auth templates. Beginning exponential backoff connectivity verification...")
-                onStatusUpdate?.invoke("Verifying Connectivity", "Checking if internet access is active…")
+                onStatusUpdate?.invoke("Verifying Access", "Checking if internet access is active…")
 
                 // Exponential backoff delays (150ms, 300ms, 600ms, 1200ms)
                 val backoffDelays = longArrayOf(150L, 300L, 600L, 1200L)
@@ -631,6 +633,7 @@ open class PortalClient(
 
                 for ((index, backoffMs) in backoffDelays.withIndex()) {
                     delay(backoffMs)
+                    onStatusUpdate?.invoke("Verifying Access", "Confirming connection (attempt ${index + 1} of ${backoffDelays.size})…")
                     AppLogger.i("PORTAL_SUBMIT", "Verification ping attempt #${index + 1} (after ${backoffMs}ms)...")
                     lastVerifyResult = check204Connectivity(connectivityUrl)
 
@@ -649,13 +652,13 @@ open class PortalClient(
                     is ConnectivityResult.CaptiveDetected -> {
                         AppLogger.w("PORTAL_SUBMIT", "Post-submission verification: Gateway continues to intercept HTTP traffic (CaptiveDetected: redirect=${lastVerifyResult.portalRedirectUrl}). Credentials were not accepted or login was not completed.")
                         LoginSubmitResult.AuthFailed(
-                            "Authentication was not accepted by the portal. Check your credentials and try again."
+                            "Wrong username or password. Check your details and try again."
                         )
                     }
                     is ConnectivityResult.Unreachable -> {
                         AppLogger.w("PORTAL_SUBMIT", "Post-submission verification: 204 Unreachable (${lastVerifyResult.message}).")
                         LoginSubmitResult.NetworkFailed(
-                            "Portal submitted, but internet verification was unreachable. Please check your Wi-Fi connection."
+                            "Signed in, but internet verification was unreachable. Please check your Wi-Fi connection."
                         )
                     }
                 }

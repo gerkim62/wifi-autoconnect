@@ -236,6 +236,11 @@ class MainViewModel(
                 }
                 is ConnectivityResult.CaptiveDetected -> {
                     AppLogger.i("VIEW_MODEL", "Captive portal detected. Redirect hint: ${result.portalRedirectUrl}")
+                    if (isUserInitiated && !isModal) {
+                        _uiState.value = MainUiState.CheckingConnection(message = "Opening login page…")
+                    } else {
+                        _backgroundStatusMessage.value = "Opening login page…"
+                    }
                     val pageResult = async {
                         fetchCaptivePortalLoginPage(result.portalRedirectUrl)
                     }
@@ -269,6 +274,11 @@ class MainViewModel(
      * Step 2: Fetch the captive portal login page and handle auto-login or show login form.
      */
     private suspend fun proceedToCaptivePortal(redirectHint: String? = null, isUserInitiated: Boolean = true) {
+        val currentState = _uiState.value
+        val isModal = currentState is MainUiState.AdvancedSettings || currentState is MainUiState.About
+        if (isUserInitiated && !isModal) {
+            _uiState.value = MainUiState.CheckingConnection(message = "Opening login page…")
+        }
         handlePortalPageResult(fetchCaptivePortalLoginPage(redirectHint), isUserInitiated = isUserInitiated)
     }
 
@@ -369,7 +379,7 @@ class MainViewModel(
 
         loginJob?.cancel()
         loginJob = viewModelScope.launch {
-            _uiState.value = MainUiState.Connecting("Connecting to portal…", isTakingLong = false)
+            _uiState.value = MainUiState.Connecting("Connecting…", isTakingLong = false)
             _isBackgroundChecking.value = false
 
             try {
@@ -405,7 +415,7 @@ class MainViewModel(
                     username = trimmedUser,
                     password = pass,
                     rememberMe = remember,
-                    errorMessage = "Network error while reaching portal. Please try again."
+                    errorMessage = "Network error while connecting. Please try again."
                 )
             }
         }
@@ -423,11 +433,16 @@ class MainViewModel(
         val currentState = _uiState.value
         val isModal = currentState is MainUiState.AdvancedSettings || currentState is MainUiState.About
 
-        if (isUserInitiated && !isModal) {
-            _uiState.value = MainUiState.Connecting("Logging in…", isTakingLong = false)
+        if (!isModal) {
+            _uiState.value = MainUiState.Connecting(
+                statusMessage = "Signing in…",
+                detailMessage = "Authenticating…",
+                isTakingLong = false
+            )
+            _isBackgroundChecking.value = false
         } else {
             _isBackgroundChecking.value = true
-            _backgroundStatusMessage.value = "Signing in to portal…"
+            _backgroundStatusMessage.value = "Signing in…"
         }
 
         var slowJob: Job? = null
@@ -435,6 +450,9 @@ class MainViewModel(
             delay(SLOW_OPERATION_NOTICE_MILLIS)
             if (_uiState.value is MainUiState.Connecting) {
                 _uiState.value = (_uiState.value as MainUiState.Connecting).copy(isTakingLong = true)
+            }
+            if (_isBackgroundChecking.value) {
+                _backgroundStatusMessage.value = "Sign-in is taking longer than usual…"
             }
         }
 
@@ -446,7 +464,7 @@ class MainViewModel(
                 timeTag = timeTag,
                 redirectUrl = redirectUrl,
                 onStatusUpdate = { status, detail ->
-                    if (isUserInitiated && !isModal) {
+                    if (!isModal) {
                         if (_uiState.value is MainUiState.Connecting) {
                             _uiState.value = (_uiState.value as MainUiState.Connecting).copy(
                                 statusMessage = status,

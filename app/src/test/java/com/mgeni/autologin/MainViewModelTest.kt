@@ -25,13 +25,12 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModelTest {
 
-    private lateinit var testDispatcher: kotlinx.coroutines.test.TestDispatcher
+    private val testDispatcher = StandardTestDispatcher()
     private lateinit var preferencesManager: PreferencesManager
     private lateinit var networkMonitor: NetworkMonitor
 
     @Before
     fun setUp() {
-        testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
         preferencesManager = PreferencesManager(null)
         preferencesManager.hasCompletedOnboarding = true

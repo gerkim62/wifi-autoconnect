@@ -57,17 +57,17 @@ private data class OnboardingStep(
 private val onboardingSteps = listOf(
     OnboardingStep(
         title = "The Problem",
-        description = "The \"guest\" Wi-Fi requires you to enter your username and password. Every single day.",
+        description = "The \"guest\" Wi-Fi requires you to enter your username and password every time.",
         icon = Icons.Outlined.Wifi
     ),
     OnboardingStep(
         title = "The Solution",
-        description = "Save your username and password in this app. Once and for all.",
+        description = "Save the Wi-Fi username and password securely in this app. Once and for all.",
         icon = Icons.Outlined.Lock
     ),
     OnboardingStep(
         title = "How It Works",
-        description = "Whenever you connect to the Wi-Fi, simply open this app. It automatically connects you.",
+        description = "Whenever you connect to the Wi-Fi, just open this app. It authenticates instantly.",
         icon = Icons.Outlined.RocketLaunch
     )
 )

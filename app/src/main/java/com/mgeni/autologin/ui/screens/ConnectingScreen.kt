@@ -77,7 +77,7 @@ fun ConnectingScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = detailMessage ?: "Authenticating with Wi-Fi portal…",
+                text = detailMessage ?: "Authenticating…",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -89,7 +89,7 @@ fun ConnectingScreen(
                     modifier = Modifier.padding(top = 24.dp, start = 16.dp, end = 16.dp)
                 ) {
                     Text(
-                        text = "This is taking longer than usual. Portal servers may be slow. Please hold on…",
+                        text = "This is taking longer than usual. Please hold on…",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center

@@ -112,6 +112,7 @@ fun MgeniApp(
 
                 is MainUiState.CheckingConnection -> {
                     SplashScreen(
+                        message = state.message,
                         isTakingLong = state.isTakingLong,
                         onSettingsClick = { viewModel.openAdvancedSettings() },
                         onAboutClick = { viewModel.openAbout() },
