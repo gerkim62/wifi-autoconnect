@@ -18,18 +18,13 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.RocketLaunch
-import androidx.compose.material.icons.outlined.Security
-import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -53,75 +48,34 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
-private data class OnboardingFeature(
-    val icon: ImageVector,
-    val title: String,
-    val description: String
-)
-
 private data class OnboardingStep(
-    val categoryTag: String,
     val title: String,
-    val subtitle: String,
-    val heroIcon: ImageVector,
-    val features: List<OnboardingFeature>
+    val description: String,
+    val icon: ImageVector
 )
 
 private val onboardingSteps = listOf(
     OnboardingStep(
-        categoryTag = "AUTOMATIC SIGNIN",
-        title = "Never Retype Your Login",
-        subtitle = "WifiAuto logs you into the \"guest\" Wi-Fi network automatically.",
-        heroIcon = Icons.Outlined.Wifi,
-        features = listOf(
-            OnboardingFeature(
-                icon = Icons.Outlined.Speed,
-                title = "Zero-Touch Connection",
-                description = "Bypasses the \"guest\" Wi-Fi login popup."
-            ),
-            OnboardingFeature(
-                icon = Icons.Outlined.Security,
-                title = "100% Private & On-Device",
-                description = "Your password is stored safely on your device."
-            )
-        )
+        title = "No More Daily Logins",
+        description = "The \"guest\" Wi-Fi logs you out every day. WifiAuto signs you in automatically so you never have to retype your username and password.",
+        icon = Icons.Outlined.Wifi
     ),
     OnboardingStep(
-        categoryTag = "ONE-TIME SETUP",
-        title = "Save Credentials Once",
-        subtitle = "Connect to the \"guest\" Wi-Fi and save your username and password once. All future logins will be automatic.",
-        heroIcon = Icons.Outlined.Lock,
-        features = listOf(
-            OnboardingFeature(
-                icon = Icons.Outlined.Wifi,
-                title = "Connect to Wi-Fi",
-                description = "Connect to the \"guest\" network."
-            ),
-            OnboardingFeature(
-                icon = Icons.Outlined.Key,
-                title = "Enter Credentials",
-                description = "Type the Wi-Fi username and password in the app once."
-            )
-        )
+        title = "Save Your Login Once",
+        description = "Connect to \"guest\" Wi-Fi and enter your username and password in the app once. They are saved for all future logins.",
+        icon = Icons.Outlined.Lock
     ),
     OnboardingStep(
-        categoryTag = "EVERYDAY USE",
-        title = "Connect & Browse Freely",
-        subtitle = "Whenever you reconnect to \"guest\" Wi-Fi, you're connected automatically.",
-        heroIcon = Icons.Outlined.RocketLaunch,
-        features = listOf(
-            OnboardingFeature(
-                icon = Icons.Outlined.RocketLaunch,
-                title = "Instant Internet Access",
-                description = "Open the app and let it auto-connect."
-            )
-        )
+        title = "Just Open the App",
+        description = "Whenever you connect to the \"guest\" Wi-Fi, simply open this app. It will log you in automatically instantly.",
+        icon = Icons.Outlined.RocketLaunch
     )
 )
 
 /**
- * Simple, clean, KISS Onboarding Screen.
- * Minimalist layout with clear visual hierarchy, large hero icons, and direct feature explanations.
+ * Pure KISS Onboarding Screen.
+ * Minimalist, classic mobile layout: Hero Icon + Title + Single clear paragraph.
+ * Zero card containers, zero visual clutter.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -145,7 +99,7 @@ fun OnboardingScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            // Top Bar (Close / Skip)
+            // Top Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -189,125 +143,71 @@ fun OnboardingScreen(
                     .fillMaxWidth()
             ) { pageIndex ->
                 val step = onboardingSteps[pageIndex]
-                val scrollState = rememberScrollState()
 
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 28.dp)
-                        .verticalScroll(scrollState),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .padding(horizontal = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Hero Icon
+                    // Big Clean Hero Icon
                     Box(
                         modifier = Modifier
-                            .size(96.dp)
+                            .size(100.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = step.heroIcon,
+                            imageVector = step.icon,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier.size(52.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(32.dp))
 
                     // Title
                     Text(
                         text = step.title,
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 24.sp
+                            fontSize = 24.sp,
+                            lineHeight = 32.sp
                         ),
                         color = MaterialTheme.colorScheme.onBackground,
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // Subtitle
+                    // Description
                     Text(
-                        text = step.subtitle,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            lineHeight = 20.sp,
-                            fontSize = 14.sp
+                        text = step.description,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            lineHeight = 22.sp,
+                            fontSize = 15.sp
                         ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    // Features List
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        step.features.forEach { feature ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                                    .padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = feature.icon,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.width(14.dp))
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = feature.title,
-                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = feature.description,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
 
-            // Bottom Navigation (Dots + Action Buttons)
+            // Bottom Navigation Footer
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Page Indicator Dots
                 Row(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 20.dp)
                 ) {
                     repeat(onboardingSteps.size) { index ->
                         val isSelected = pagerState.currentPage == index
@@ -348,7 +248,7 @@ fun OnboardingScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(52.dp),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(14.dp)
                         ) {
                             Text(
                                 text = "Back",
@@ -370,7 +270,7 @@ fun OnboardingScreen(
                         modifier = Modifier
                             .weight(if (pagerState.currentPage > 0) 1.5f else 1f)
                             .height(52.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
