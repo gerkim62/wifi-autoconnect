@@ -157,7 +157,7 @@ fun AboutScreen(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "Automated Wi-Fi Captive Portal Sign-In",
+                text = "Automated \"guest\" Wi-Fi Sign-In",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

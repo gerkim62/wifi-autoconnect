@@ -1,9 +1,6 @@
 package com.mgeni.autologin.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -27,10 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.AutoMode
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.RocketLaunch
 import androidx.compose.material.icons.outlined.Security
@@ -51,63 +46,82 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mgeni.autologin.ui.components.PrimaryActionButton
-import com.mgeni.autologin.ui.components.SecondaryActionButton
-import com.mgeni.autologin.ui.theme.EmeraldPrimary
 import kotlinx.coroutines.launch
 
-data class OnboardingStep(
-    val tag: String,
-    val title: String,
-    val description: String,
+private data class OnboardingFeature(
     val icon: ImageVector,
-    val bulletPoints: List<Pair<ImageVector, String>>
+    val title: String,
+    val description: String
+)
+
+private data class OnboardingStep(
+    val categoryTag: String,
+    val title: String,
+    val subtitle: String,
+    val heroIcon: ImageVector,
+    val features: List<OnboardingFeature>
 )
 
 private val onboardingSteps = listOf(
     OnboardingStep(
-        tag = "NEVER RETYPE YOUR LOGIN",
-        title = "Stop Retyping Your Login Every Day",
-        description = "Guest Wi-Fi networks log you out repeatedly. WifiAuto saves your username and password so you never have to retype them.",
-        icon = Icons.Outlined.Wifi,
-        bulletPoints = listOf(
-            Icons.Outlined.CheckCircle to "Enter your login once in this app",
-            Icons.Outlined.Lock to "Your password stays securely on your phone"
+        categoryTag = "AUTOMATIC SIGNIN",
+        title = "Never Retype Your Login",
+        subtitle = "WifiAuto logs you into the \"guest\" Wi-Fi network automatically.",
+        heroIcon = Icons.Outlined.Wifi,
+        features = listOf(
+            OnboardingFeature(
+                icon = Icons.Outlined.Speed,
+                title = "Zero-Touch Connection",
+                description = "Bypasses the \"guest\" Wi-Fi login popup."
+            ),
+            OnboardingFeature(
+                icon = Icons.Outlined.Security,
+                title = "100% Private & On-Device",
+                description = "Your password is stored safely on your device."
+            )
         )
     ),
     OnboardingStep(
-        tag = "FIRST TIME SETUP",
-        title = "Save Your Login in the App",
-        description = "You only need to do this once:",
-        icon = Icons.Outlined.Lock,
-        bulletPoints = listOf(
-            Icons.Outlined.CheckCircle to "1. Connect your phone's Wi-Fi to \"guest\"",
-            Icons.Outlined.CheckCircle to "2. Open this app and enter your username & password",
-            Icons.Outlined.CheckCircle to "3. Tap Connect — your login is saved!"
+        categoryTag = "ONE-TIME SETUP",
+        title = "Save Credentials Once",
+        subtitle = "Connect to the \"guest\" Wi-Fi and save your username and password once. All future logins will be automatic.",
+        heroIcon = Icons.Outlined.Lock,
+        features = listOf(
+            OnboardingFeature(
+                icon = Icons.Outlined.Wifi,
+                title = "Connect to Wi-Fi",
+                description = "Connect to the \"guest\" network."
+            ),
+            OnboardingFeature(
+                icon = Icons.Outlined.Key,
+                title = "Enter Credentials",
+                description = "Type the Wi-Fi username and password in the app once."
+            )
         )
     ),
     OnboardingStep(
-        tag = "EVERY TIME AFTER",
-        title = "Just Connect & Open the App",
-        description = "Every time you come back to the guest Wi-Fi:",
-        icon = Icons.Outlined.RocketLaunch,
-        bulletPoints = listOf(
-            Icons.Outlined.CheckCircle to "1. Connect to the \"guest\" Wi-Fi",
-            Icons.Outlined.CheckCircle to "2. Just open this app",
-            Icons.Outlined.CheckCircle to "3. You're online — it logs you in automatically!"
+        categoryTag = "EVERYDAY USE",
+        title = "Connect & Browse Freely",
+        subtitle = "Whenever you reconnect to \"guest\" Wi-Fi, you're connected automatically.",
+        heroIcon = Icons.Outlined.RocketLaunch,
+        features = listOf(
+            OnboardingFeature(
+                icon = Icons.Outlined.RocketLaunch,
+                title = "Instant Internet Access",
+                description = "Open the app and let it auto-connect."
+            )
         )
     )
 )
 
 /**
- * Modern 3-step interactive onboarding guide.
- * Features swipeable pager, animated dot indicator, skip action, and high-contrast styling.
+ * Simple, clean, KISS Onboarding Screen.
+ * Minimalist layout with clear visual hierarchy, large hero icons, and direct feature explanations.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -131,11 +145,12 @@ fun OnboardingScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            // Top App Bar Header with Skip / Close
+            // Top Bar (Close / Skip)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .height(56.dp)
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -152,15 +167,12 @@ fun OnboardingScreen(
                 }
 
                 if (!isLastPage) {
-                    TextButton(
-                        onClick = onComplete,
-                        modifier = Modifier.padding(end = 4.dp)
-                    ) {
+                    TextButton(onClick = onComplete) {
                         Text(
                             text = "Skip",
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         )
                     }
@@ -169,7 +181,7 @@ fun OnboardingScreen(
                 }
             }
 
-            // Horizontal Pager
+            // Pager Content
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
@@ -184,47 +196,29 @@ fun OnboardingScreen(
                         .fillMaxSize()
                         .padding(horizontal = 28.dp)
                         .verticalScroll(scrollState),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Elevated Icon Circle Container
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Hero Icon
                     Box(
                         modifier = Modifier
-                            .size(100.dp)
+                            .size(96.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = step.icon,
+                            imageVector = step.heroIcon,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(50.dp)
+                            modifier = Modifier.size(48.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(28.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    // Step Tag Badge
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = step.tag,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.2.sp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Step Headline
+                    // Title
                     Text(
                         text = step.title,
                         style = MaterialTheme.typography.headlineMedium.copy(
@@ -235,84 +229,101 @@ fun OnboardingScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                    // Step Description
+                    // Subtitle
                     Text(
-                        text = step.description,
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            lineHeight = 22.sp,
+                        text = step.subtitle,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            lineHeight = 20.sp,
                             fontSize = 14.sp
                         ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(32.dp))
 
-                    // Bullet Points Card
+                    // Features List
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        step.bulletPoints.forEach { (bulletIcon, text) ->
+                        step.features.forEach { feature ->
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = bulletIcon,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    text = text,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontWeight = FontWeight.Medium,
-                                        fontSize = 13.sp
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = feature.icon,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(14.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = feature.title,
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = feature.description,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
 
-            // Bottom Navigation Footer (Indicators + Buttons)
+            // Bottom Navigation (Dots + Action Buttons)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Animated Page Indicator Dots
+                // Page Indicator Dots
                 Row(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 20.dp)
+                    modifier = Modifier.padding(bottom = 16.dp)
                 ) {
                     repeat(onboardingSteps.size) { index ->
                         val isSelected = pagerState.currentPage == index
                         val width by animateDpAsState(
-                            targetValue = if (isSelected) 28.dp else 8.dp,
-                            label = "IndicatorWidth"
+                            targetValue = if (isSelected) 24.dp else 8.dp,
+                            label = "DotWidth"
                         )
                         val color = if (isSelected) {
                             MaterialTheme.colorScheme.primary
                         } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
                         }
 
                         Box(
                             modifier = Modifier
-                                .padding(horizontal = 4.dp)
+                                .padding(horizontal = 3.dp)
                                 .height(8.dp)
                                 .width(width)
                                 .clip(RoundedCornerShape(4.dp))
@@ -341,7 +352,7 @@ fun OnboardingScreen(
                         ) {
                             Text(
                                 text = "Back",
-                                style = MaterialTheme.typography.labelLarge
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold)
                             )
                         }
                     }
@@ -365,10 +376,24 @@ fun OnboardingScreen(
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
-                        Text(
-                            text = if (isLastPage) "Get Started" else "Next",
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = if (isLastPage) "Get Started" else "Next",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }
