@@ -88,6 +88,7 @@ import com.mgeni.autologin.ui.theme.EmeraldPrimary
 fun SettingsScreen(
     currentPortalUrl: String,
     initialCheckInternetOnStartup: Boolean = true,
+    initialRespectPortalResponse: Boolean = true,
     initialEnableBackgroundNotifications: Boolean = false,
     hasSavedCredentials: Boolean = false,
     errorMessage: String? = null,
@@ -95,6 +96,7 @@ fun SettingsScreen(
     logCount: Int = 0,
     onSavePortalUrl: (newUrl: String) -> Unit,
     onToggleCheckInternet: (Boolean) -> Unit,
+    onToggleRespectPortalResponse: (Boolean) -> Unit = {},
     onToggleNotifications: (Boolean) -> Unit,
     onClearCredentialsClick: () -> Unit = {},
     onResetToDefaultClick: () -> Unit,
@@ -105,6 +107,7 @@ fun SettingsScreen(
 ) {
     var portalUrl by remember(currentPortalUrl) { mutableStateOf(currentPortalUrl) }
     var checkInternetOnStartup by remember(initialCheckInternetOnStartup) { mutableStateOf(initialCheckInternetOnStartup) }
+    var respectPortalResponse by remember(initialRespectPortalResponse) { mutableStateOf(initialRespectPortalResponse) }
     var enableBackgroundNotifications by remember(initialEnableBackgroundNotifications) { mutableStateOf(initialEnableBackgroundNotifications) }
 
     var showClearCredsDialog by remember { mutableStateOf(false) }
@@ -624,21 +627,87 @@ fun SettingsScreen(
                     )
                 }
                 Spacer(modifier = Modifier.width(14.dp))
-                Text(
-                    text = "Check internet on startup",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f)
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Check internet on startup",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "Tests for an existing connection before opening portal",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Spacer(modifier = Modifier.width(8.dp))
                 Switch(
                     checked = checkInternetOnStartup,
                     onCheckedChange = { newValue ->
                         checkInternetOnStartup = newValue
                         onToggleCheckInternet(newValue)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+            }
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+            )
+
+            // 6. Respect Portal Response Option
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        val newValue = !respectPortalResponse
+                        respectPortalResponse = newValue
+                        onToggleRespectPortalResponse(newValue)
+                    }
+                    .padding(vertical = 10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(21.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Respect portal response",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "Accepts login success or failure directly from the portal without extra verification delays",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(
+                    checked = respectPortalResponse,
+                    onCheckedChange = { newValue ->
+                        respectPortalResponse = newValue
+                        onToggleRespectPortalResponse(newValue)
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = MaterialTheme.colorScheme.onPrimary,

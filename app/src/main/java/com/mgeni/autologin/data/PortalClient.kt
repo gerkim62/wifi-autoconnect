@@ -561,6 +561,7 @@ open class PortalClient(
         timeTag: String,
         redirectUrl: String = "",
         connectivityUrl: String = CONNECTIVITY_CHECK_URL,
+        respectPortalResponse: Boolean = true,
         onStatusUpdate: ((status: String, detail: String?) -> Unit)? = null
     ): LoginSubmitResult = withContext(Dispatchers.IO) {
         if (!isPermittedCleartextDestination(actionUrl)) {
@@ -631,7 +632,12 @@ open class PortalClient(
 
         when (htmlAuth) {
             is HtmlAuthResult.ExplicitFailure -> {
-                AppLogger.w("PORTAL_SUBMIT", "Portal HTML reported explicit rejection: ${htmlAuth.reason}. Running single 204 connectivity check to verify...")
+                if (respectPortalResponse) {
+                    AppLogger.i("PORTAL_SUBMIT", "Portal HTML reported explicit rejection: ${htmlAuth.reason}. Declaring AuthFailed immediately (respectPortalResponse=true).")
+                    return@withContext LoginSubmitResult.AuthFailed(htmlAuth.reason)
+                }
+
+                AppLogger.w("PORTAL_SUBMIT", "Portal HTML reported explicit rejection: ${htmlAuth.reason}. Running 204 connectivity check to verify (respectPortalResponse=false)...")
                 onStatusUpdate?.invoke("Authentication Failed", "Verifying credentials…")
 
                 delay(150L)
@@ -641,13 +647,19 @@ open class PortalClient(
                     return@withContext LoginSubmitResult.Success
                 }
 
-                AppLogger.w("PORTAL_SUBMIT", "Rejection confirmed by connectivity check. Returning AuthFailed immediately.")
+                AppLogger.w("PORTAL_SUBMIT", "Rejection confirmed by connectivity check. Returning AuthFailed.")
                 return@withContext LoginSubmitResult.AuthFailed(htmlAuth.reason)
             }
 
             is HtmlAuthResult.ExplicitSuccess -> {
                 AppLogger.i("PORTAL_SUBMIT", "Portal HTML reported explicit success: Authentication Successful! Credentials confirmed by gateway.")
-                onStatusUpdate?.invoke("Connected", "Activating internet access…")
+
+                if (respectPortalResponse) {
+                    AppLogger.i("PORTAL_SUBMIT", "Declaring Success immediately without verification delay (respectPortalResponse=true).")
+                    return@withContext LoginSubmitResult.Success
+                }
+
+                onStatusUpdate?.invoke("Connected", "Verifying internet connection…")
 
                 // Run quick non-fatal verification pings
                 val backoffDelays = longArrayOf(150L, 300L, 600L)

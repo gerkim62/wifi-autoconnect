@@ -94,7 +94,8 @@ class AutoLoginWorker(
                                 username = prefs.username,
                                 password = prefs.password,
                                 timeTag = pageResult.timeTag,
-                                redirectUrl = pageResult.redirectUrl
+                                redirectUrl = pageResult.redirectUrl,
+                                respectPortalResponse = prefs.respectPortalResponse
                             )
 
                             when (submitResult) {

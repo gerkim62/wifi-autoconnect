@@ -218,6 +218,7 @@ fun MgeniApp(
                     SettingsScreen(
                         currentPortalUrl = state.portalUrl,
                         initialCheckInternetOnStartup = state.checkInternetOnStartup,
+                        initialRespectPortalResponse = state.respectPortalResponse,
                         initialEnableBackgroundNotifications = state.enableBackgroundNotifications,
                         hasSavedCredentials = state.hasSavedCredentials,
                         errorMessage = state.errorMessage,
@@ -228,6 +229,9 @@ fun MgeniApp(
                         },
                         onToggleCheckInternet = { enabled ->
                             viewModel.toggleCheckInternetOnStartup(enabled)
+                        },
+                        onToggleRespectPortalResponse = { enabled ->
+                            viewModel.toggleRespectPortalResponse(enabled)
                         },
                         onToggleNotifications = { enabled ->
                             viewModel.toggleBackgroundNotifications(enabled)

@@ -44,6 +44,7 @@ sealed interface MainUiState {
     data class Settings(
         val portalUrl: String,
         val checkInternetOnStartup: Boolean = true,
+        val respectPortalResponse: Boolean = true,
         val enableBackgroundNotifications: Boolean = false,
         val hasSavedCredentials: Boolean = false,
         val isDefault: Boolean = true,

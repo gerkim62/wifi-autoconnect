@@ -26,6 +26,7 @@ open class PreferencesManager(context: Context? = null) {
         private const val KEY_HAS_COMPLETED_ONBOARDING = "has_completed_onboarding"
         private const val KEY_ENABLE_BACKGROUND_NOTIFICATIONS = "enable_background_notifications"
         private const val KEY_LAST_BACKGROUND_LOGIN_TIME = "last_background_login_time"
+        private const val KEY_RESPECT_PORTAL_RESPONSE = "respect_portal_response"
     }
 
     var hasCompletedOnboarding: Boolean
@@ -94,6 +95,18 @@ open class PreferencesManager(context: Context? = null) {
             memoryStore[KEY_CHECK_INTERNET_ON_STARTUP] = value
             if (previous != value) {
                 AppLogger.i("PREFERENCES", "checkInternetOnStartup changed: $previous -> $value")
+            }
+        }
+
+    var respectPortalResponse: Boolean
+        get() = prefs?.getBoolean(KEY_RESPECT_PORTAL_RESPONSE, true)
+            ?: (memoryStore[KEY_RESPECT_PORTAL_RESPONSE] as? Boolean ?: true)
+        set(value) {
+            val previous = respectPortalResponse
+            prefs?.edit()?.putBoolean(KEY_RESPECT_PORTAL_RESPONSE, value)?.apply()
+            memoryStore[KEY_RESPECT_PORTAL_RESPONSE] = value
+            if (previous != value) {
+                AppLogger.i("PREFERENCES", "respectPortalResponse changed: $previous -> $value")
             }
         }
 

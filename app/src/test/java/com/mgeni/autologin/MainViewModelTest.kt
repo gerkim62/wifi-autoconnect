@@ -242,7 +242,9 @@ class MainViewModelTest {
                 username: String,
                 password: String,
                 timeTag: String,
-                redirectUrl: String,                connectivityUrl: String,
+                redirectUrl: String,
+                connectivityUrl: String,
+                respectPortalResponse: Boolean,
                 onStatusUpdate: ((String, String?) -> Unit)?
             ): LoginSubmitResult {
                 return LoginSubmitResult.AuthFailed("Wrong username or password. Check your details and try again.")
@@ -295,6 +297,7 @@ class MainViewModelTest {
                 timeTag: String,
                 redirectUrl: String,
                 connectivityUrl: String,
+                respectPortalResponse: Boolean,
                 onStatusUpdate: ((String, String?) -> Unit)?
             ): LoginSubmitResult {
                 return LoginSubmitResult.NetworkFailed("Could not reach portal during submission.")
@@ -330,11 +333,14 @@ class MainViewModelTest {
 
         viewModel.savePortalUrl("http://192.168.1.1/login.html")
         viewModel.toggleCheckInternetOnStartup(false)
+        viewModel.toggleRespectPortalResponse(false)
         advanceUntilIdle()
 
         val settingsState = viewModel.uiState.value as MainUiState.Settings
         assertEquals("http://192.168.1.1/login.html", preferencesManager.portalUrl)
         assertFalse(preferencesManager.checkInternetOnStartup)
+        assertFalse(preferencesManager.respectPortalResponse)
+        assertFalse(settingsState.respectPortalResponse)
         assertEquals("Portal URL saved.", settingsState.successMessage)
     }
 
@@ -514,6 +520,7 @@ class MainViewModelTest {
                 timeTag: String,
                 redirectUrl: String,
                 connectivityUrl: String,
+                respectPortalResponse: Boolean,
                 onStatusUpdate: ((status: String, detail: String?) -> Unit)?
             ): LoginSubmitResult {
                 // Simulating PortalClient treating ExplicitSuccess as authoritative even if 204 is delayed

@@ -480,6 +480,7 @@ class MainViewModel(
                 password = password,
                 timeTag = timeTag,
                 redirectUrl = redirectUrl,
+                respectPortalResponse = preferencesManager.respectPortalResponse,
                 onStatusUpdate = { status, detail ->
                     if (!isModal) {
                         if (_uiState.value is MainUiState.Connecting) {
@@ -618,6 +619,7 @@ class MainViewModel(
         _uiState.value = MainUiState.Settings(
             portalUrl = currentUrl,
             checkInternetOnStartup = checkInternet,
+            respectPortalResponse = preferencesManager.respectPortalResponse,
             enableBackgroundNotifications = preferencesManager.enableBackgroundNotifications,
             hasSavedCredentials = hasSavedCreds,
             isDefault = isDefault,
@@ -692,6 +694,17 @@ class MainViewModel(
     }
 
     /**
+     * Toggles respectPortalResponse setting and saves it immediately.
+     */
+    fun toggleRespectPortalResponse(enabled: Boolean) {
+        preferencesManager.respectPortalResponse = enabled
+        val currentSettings = _uiState.value as? MainUiState.Settings
+        if (currentSettings != null) {
+            _uiState.value = currentSettings.copy(respectPortalResponse = enabled)
+        }
+    }
+
+    /**
      * Toggles enableBackgroundNotifications setting and saves it immediately.
      */
     fun toggleBackgroundNotifications(enabled: Boolean) {
@@ -708,6 +721,7 @@ class MainViewModel(
     fun resetSettingsToDefault() {
         preferencesManager.resetPortalUrl()
         preferencesManager.checkInternetOnStartup = true
+        preferencesManager.respectPortalResponse = true
         preferencesManager.enableBackgroundNotifications = false
 
         val currentSettings = _uiState.value as? MainUiState.Settings
@@ -715,6 +729,7 @@ class MainViewModel(
             _uiState.value = currentSettings.copy(
                 portalUrl = PreferencesManager.DEFAULT_PORTAL_URL,
                 checkInternetOnStartup = true,
+                respectPortalResponse = true,
                 enableBackgroundNotifications = false,
                 isDefault = true,
                 errorMessage = null,
