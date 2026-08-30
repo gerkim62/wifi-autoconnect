@@ -279,7 +279,7 @@ fun OnboardingScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .padding(horizontal = 16.dp, vertical = 14.dp),
-                                            verticalAlignment = Alignment.CenterVertically
+                                            verticalAlignment = Alignment.Top
                                         ) {
                                             Box(
                                                 modifier = Modifier
@@ -307,6 +307,7 @@ fun OnboardingScreen(
                                                     ),
                                                     color = MaterialTheme.colorScheme.onBackground
                                                 )
+                                                Spacer(modifier = Modifier.height(2.dp))
                                                 Text(
                                                     text = item.description,
                                                     style = MaterialTheme.typography.bodySmall.copy(
@@ -439,16 +440,10 @@ fun OnboardingScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(14.dp))
-                                        .then(
-                                            if (!isBatteryExempt) {
-                                                Modifier.clickable {
-                                                    OemBatteryHelper.openBatteryOptimizationSettings(context)
-                                                    isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
-                                                }
-                                            } else {
-                                                Modifier
-                                            }
-                                        ),
+                                        .clickable {
+                                            OemBatteryHelper.openBatteryOptimizationSettings(context)
+                                            isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
+                                        },
                                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                                     shape = RoundedCornerShape(14.dp)
                                 ) {
@@ -493,41 +488,17 @@ fun OnboardingScreen(
 
                                         Spacer(modifier = Modifier.width(8.dp))
 
-                                        if (!isBatteryExempt) {
-                                            Text(
-                                                text = "Allow",
-                                                style = MaterialTheme.typography.labelMedium.copy(
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
+                                        Switch(
+                                            checked = isBatteryExempt,
+                                            onCheckedChange = {
+                                                OemBatteryHelper.openBatteryOptimizationSettings(context)
+                                                isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
+                                            },
+                                            colors = SwitchDefaults.colors(
+                                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                                checkedTrackColor = MaterialTheme.colorScheme.primary
                                             )
-                                        } else {
-                                            Surface(
-                                                shape = RoundedCornerShape(6.dp),
-                                                color = EmeraldContainer.copy(alpha = 0.7f)
-                                            ) {
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Outlined.CheckCircle,
-                                                        contentDescription = null,
-                                                        tint = EmeraldPrimary,
-                                                        modifier = Modifier.size(12.dp)
-                                                    )
-                                                    Spacer(modifier = Modifier.width(3.dp))
-                                                    Text(
-                                                        text = "Allowed",
-                                                        style = MaterialTheme.typography.labelSmall.copy(
-                                                            fontSize = 11.sp,
-                                                            fontWeight = FontWeight.SemiBold
-                                                        ),
-                                                        color = EmeraldPrimary
-                                                    )
-                                                }
-                                            }
-                                        }
+                                        )
                                     }
                                 }
                             }

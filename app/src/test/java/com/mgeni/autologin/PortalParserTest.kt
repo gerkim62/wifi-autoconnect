@@ -79,7 +79,7 @@ class PortalParserTest {
         assertTrue("Expected PageFetchResult.Error when token is missing", result is PageFetchResult.Error)
         val error = result as PageFetchResult.Error
         assertEquals(
-            "This network is not supported. Only Guest is supported. Please log in using your web browser, or contact the developer if you need support.",
+            "Only the \"guest\" Wi-Fi is supported today. Make sure you're connected to \"guest\", or contact the developer if this is unexpected.",
             error.message
         )
     }

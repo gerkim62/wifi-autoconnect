@@ -315,21 +315,15 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
             )
 
-            // 2. Keep app running (Simplified Flat row matching onboarding Step 2)
+            // 2. Keep app running (Simplified Flat row with Switch toggle)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .then(
-                        if (!isBatteryExempt) {
-                            Modifier.clickable {
-                                OemBatteryHelper.openBatteryOptimizationSettings(context)
-                                isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
-                            }
-                        } else {
-                            Modifier
-                        }
-                    )
+                    .clickable {
+                        OemBatteryHelper.openBatteryOptimizationSettings(context)
+                        isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
+                    }
                     .padding(vertical = 10.dp)
             ) {
                 Box(
@@ -363,41 +357,17 @@ fun SettingsScreen(
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                if (!isBatteryExempt) {
-                    Text(
-                        text = "Allow",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                Switch(
+                    checked = isBatteryExempt,
+                    onCheckedChange = {
+                        OemBatteryHelper.openBatteryOptimizationSettings(context)
+                        isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary
                     )
-                } else {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = EmeraldContainer.copy(alpha = 0.7f)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.CheckCircle,
-                                contentDescription = null,
-                                tint = EmeraldPrimary,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Text(
-                                text = "Allowed",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = EmeraldPrimary
-                            )
-                        }
-                    }
-                }
+                )
             }
 
             HorizontalDivider(
@@ -471,7 +441,7 @@ fun SettingsScreen(
                 )
             }
 
-            // 4. Portal URL Field (Card treatment with placeholder, no duplicate label)
+            // 4. Portal URL Field (Card with inline label, no explanatory paragraphs)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -480,25 +450,10 @@ fun SettingsScreen(
                     .padding(14.dp)
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Portal URL",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        text = "Captive portal address for the \"guest\" Wi-Fi network.",
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
-                    )
-
                     OutlinedTextField(
                         value = portalUrl,
                         onValueChange = { portalUrl = it },
-                        placeholder = { Text("https://...") },
+                        label = { Text("Portal URL") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Outlined.Web,
@@ -600,7 +555,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // 5. Check Internet Connectivity on Startup Option (Flat row)
+            // 5. Check Internet Connectivity on Startup Option (Flat row, no explanation)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -627,21 +582,15 @@ fun SettingsScreen(
                     )
                 }
                 Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Check internet on startup",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        text = "Verify connectivity before opening the portal.",
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = "Check internet on startup",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.weight(1f)
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Switch(
                     checked = checkInternetOnStartup,
@@ -658,7 +607,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // 6. Diagnostic Logs Section (Card)
+            // 6. Diagnostic Logs Section (Card, no description paragraph)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -686,21 +635,15 @@ fun SettingsScreen(
                             )
                         }
                         Spacer(modifier = Modifier.width(14.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Diagnostic Logs",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                ),
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                            Text(
-                                text = "Captures portal HTTP requests, responses & errors ($logCount events).",
-                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = if (logCount > 0) "Diagnostic Logs ($logCount)" else "Diagnostic Logs",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))

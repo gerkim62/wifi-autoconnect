@@ -508,7 +508,7 @@ open class PortalClient(
             val pageTitle = doc.title().trim()
             AppLogger.w("PORTAL_PARSER", "Missing au_pxytimetag input in form (Page Title: \"$pageTitle\"). Captive portal template is unsupported by WifiAuto.")
             return PageFetchResult.Error(
-                "This network is not supported. Only Guest is supported. Please log in using your web browser, or contact the developer if you need support."
+                "Only the \"guest\" Wi-Fi is supported today. Make sure you're connected to \"guest\", or contact the developer if this is unexpected."
             )
         }
 

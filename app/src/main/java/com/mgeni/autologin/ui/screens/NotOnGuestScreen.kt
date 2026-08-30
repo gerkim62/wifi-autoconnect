@@ -56,7 +56,7 @@ fun NotOnGuestScreen(
 ) {
     val isOnlyCellular = networkState == NetworkState.OnlyCellular
     val isOffline = networkState == NetworkState.Offline
-    val isUnsupported = errorMessage.contains("not supported", ignoreCase = true)
+    val isUnsupported = errorMessage.contains("not supported", ignoreCase = true) || errorMessage.contains("supported today", ignoreCase = true)
 
     val headline = when {
         isOnlyCellular -> "Connected to mobile data"
