@@ -165,13 +165,6 @@ fun LoginScreen(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
-                    // Error banner if any (High contrast WCAG AAA)
-                    StatusBanner(
-                        type = BannerType.Error,
-                        message = errorMessage ?: "",
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
                     // Logo & App Name Header
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -262,6 +255,13 @@ fun LoginScreen(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
+
+                    // Error banner directly connected to the login form
+                    StatusBanner(
+                        type = BannerType.Error,
+                        message = errorMessage ?: "",
+                        modifier = Modifier.padding(bottom = 14.dp)
+                    )
 
                     // Username Input
                     OutlinedTextField(

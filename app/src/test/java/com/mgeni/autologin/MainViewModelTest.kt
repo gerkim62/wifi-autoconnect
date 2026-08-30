@@ -269,8 +269,10 @@ class MainViewModelTest {
         assertEquals("secret_pass_123", loginForm.password)
         assertTrue(loginForm.errorMessage!!.contains("Wrong username or password"))
 
-        // Saved credentials must remain persistent in PreferencesManager
+        // Saved credentials must remain persistent in PreferencesManager, but marked unverified
         assertTrue("Credentials must remain stored", preferencesManager.hasSavedCredentials())
+        assertFalse("Credentials must be marked unverified after auth failure", preferencesManager.isCredentialsVerified)
+        assertFalse("hasVerifiedCredentials must be false after auth failure", preferencesManager.hasVerifiedCredentials())
     }
 
     @Test
@@ -646,6 +648,61 @@ class MainViewModelTest {
 
         advanceUntilIdle()
         assertEquals("http://10.0.2.2:8080/custom-portal.html", requestedUrl)
+    }
+
+    @Test
+    fun `unverified credentials pre-fill LoginForm without auto-submitting and become verified on successful submit`() = runTest(testDispatcher) {
+        // Save credentials as unverified (e.g. from previous failed attempt or unconfirmed input)
+        preferencesManager.saveCredentials("john_doe", "secret_pass_123", remember = true, isVerified = false)
+        assertTrue(preferencesManager.hasSavedCredentials())
+        assertFalse(preferencesManager.isCredentialsVerified)
+        assertFalse(preferencesManager.hasVerifiedCredentials())
+
+        var submitCount = 0
+        val fakeClient = object : FakePortalClient(ConnectivityResult.CaptiveDetected(null)) {
+            override suspend fun fetchLoginPage(portalUrl: String): PageFetchResult {
+                return PageFetchResult.Success("tag123", "http://10.10.10.10/login.html", "")
+            }
+
+            override suspend fun submitLogin(
+                actionUrl: String,
+                username: String,
+                password: String,
+                timeTag: String,
+                redirectUrl: String,
+                connectivityUrl: String,
+                respectPortalResponse: Boolean,
+                onStatusUpdate: ((String, String?) -> Unit)?
+            ): LoginSubmitResult {
+                submitCount++
+                return LoginSubmitResult.Success
+            }
+        }
+
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+
+        // Because credentials were unverified, auto-submit was NOT triggered; LoginForm is presented with prefilled fields
+        assertEquals(0, submitCount)
+        val state = viewModel.uiState.value
+        assertTrue("Expected LoginForm for unverified credentials, got $state", state is MainUiState.LoginForm)
+        val formState = state as MainUiState.LoginForm
+        assertEquals("john_doe", formState.username)
+        assertEquals("secret_pass_123", formState.password)
+
+        // Now user taps submit/connect
+        viewModel.submitLoginForm("john_doe", "secret_pass_123", remember = true)
+        advanceUntilIdle()
+
+        assertEquals(1, submitCount)
+        assertTrue(viewModel.uiState.value is MainUiState.Success)
+        assertTrue("Credentials must now be marked verified", preferencesManager.isCredentialsVerified)
+        assertTrue("hasVerifiedCredentials must now be true", preferencesManager.hasVerifiedCredentials())
     }
 }
 

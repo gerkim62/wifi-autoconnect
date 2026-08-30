@@ -332,8 +332,8 @@ class MainViewModel(
                 }
             }
             is PageFetchResult.Success -> {
-                if (preferencesManager.hasSavedCredentials()) {
-                    AppLogger.i("VIEW_MODEL", "Saved credentials found for user '${preferencesManager.username}'. Initiating automatic login.")
+                if (preferencesManager.hasVerifiedCredentials()) {
+                    AppLogger.i("VIEW_MODEL", "Verified saved credentials found for user '${preferencesManager.username}'. Initiating automatic login.")
                     lastSubmittedUser = preferencesManager.username
                     lastSubmittedPass = preferencesManager.password
                     lastSubmittedRememberMe = preferencesManager.rememberMe
@@ -348,7 +348,7 @@ class MainViewModel(
                         isUserInitiated = isUserInitiated
                     )
                 } else {
-                    AppLogger.i("VIEW_MODEL", "No saved credentials found. Transitioning to LoginForm.")
+                    AppLogger.i("VIEW_MODEL", "No verified credentials found (hasSaved=${preferencesManager.hasSavedCredentials()}, verified=${preferencesManager.isCredentialsVerified}). Transitioning to LoginForm.")
                     val formState = MainUiState.LoginForm(
                         username = preferencesManager.username,
                         password = preferencesManager.password,
@@ -393,6 +393,11 @@ class MainViewModel(
         lastSubmittedUser = trimmedUser
         lastSubmittedPass = pass
         lastSubmittedRememberMe = remember
+
+        if (remember) {
+            // Save credentials immediately as unverified so user input is never discarded even on unexpected kill
+            preferencesManager.saveCredentials(trimmedUser, pass, remember, isVerified = false)
+        }
 
         loginJob?.cancel()
         loginJob = viewModelScope.launch {
@@ -504,8 +509,8 @@ class MainViewModel(
 
         when (submitResult) {
             is LoginSubmitResult.Success -> {
-                AppLogger.i("VIEW_MODEL", "Login succeeded for '$username'. Saving credentials.")
-                preferencesManager.saveCredentials(username, password, rememberMe)
+                AppLogger.i("VIEW_MODEL", "Login succeeded for '$username'. Marking credentials verified and saving.")
+                preferencesManager.saveCredentials(username, password, rememberMe, isVerified = true)
                 if (isModal) {
                     updateModalPreviousState(MainUiState.Success)
                 } else {
@@ -513,7 +518,11 @@ class MainViewModel(
                 }
             }
             is LoginSubmitResult.AuthFailed -> {
-                AppLogger.w("VIEW_MODEL", "Authentication rejected by portal: ${submitResult.message}. Returning to LoginForm with prefilled credentials.")
+                AppLogger.w("VIEW_MODEL", "Authentication rejected by portal: ${submitResult.message}. Preserving credentials as unverified.")
+                if (rememberMe) {
+                    // Keep credentials saved in preferences so user never loses them, marked unverified
+                    preferencesManager.saveCredentials(username, password, rememberMe, isVerified = false)
+                }
                 // Return directly to LoginForm with BOTH username and password prefilled so user can fix typo easily!
                 val formState = MainUiState.LoginForm(
                     username = username,

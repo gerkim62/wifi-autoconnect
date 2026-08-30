@@ -27,6 +27,7 @@ open class PreferencesManager(context: Context? = null) {
         private const val KEY_ENABLE_BACKGROUND_NOTIFICATIONS = "enable_background_notifications"
         private const val KEY_LAST_BACKGROUND_LOGIN_TIME = "last_background_login_time"
         private const val KEY_RESPECT_PORTAL_RESPONSE = "respect_portal_response"
+        private const val KEY_CREDENTIALS_VERIFIED = "credentials_verified"
     }
 
     var hasCompletedOnboarding: Boolean
@@ -54,6 +55,26 @@ open class PreferencesManager(context: Context? = null) {
         set(value) {
             prefs?.edit()?.putString(KEY_PASSWORD, value)?.apply()
             memoryStore[KEY_PASSWORD] = value
+        }
+
+    var isCredentialsVerified: Boolean
+        get() {
+            if (prefs != null) {
+                if (prefs.contains(KEY_CREDENTIALS_VERIFIED)) {
+                    return prefs.getBoolean(KEY_CREDENTIALS_VERIFIED, false)
+                }
+                // Backward compatibility: If credentials existed from earlier versions, treat as verified
+                return hasSavedCredentials()
+            }
+            return (memoryStore[KEY_CREDENTIALS_VERIFIED] as? Boolean) ?: hasSavedCredentials()
+        }
+        set(value) {
+            val previous = isCredentialsVerified
+            prefs?.edit()?.putBoolean(KEY_CREDENTIALS_VERIFIED, value)?.apply()
+            memoryStore[KEY_CREDENTIALS_VERIFIED] = value
+            if (previous != value) {
+                AppLogger.i("PREFERENCES", "isCredentialsVerified changed: $previous -> $value")
+            }
         }
 
     var portalUrl: String
@@ -140,18 +161,28 @@ open class PreferencesManager(context: Context? = null) {
         return username.isNotBlank() && password.isNotBlank()
     }
 
-    fun saveCredentials(user: String, pass: String, remember: Boolean) {
+    fun hasVerifiedCredentials(): Boolean {
+        return hasSavedCredentials() && isCredentialsVerified
+    }
+
+    fun markCredentialsVerified(isVerified: Boolean = true) {
+        isCredentialsVerified = isVerified
+    }
+
+    fun saveCredentials(user: String, pass: String, remember: Boolean, isVerified: Boolean = true) {
         val trimmedUser = user.trim()
-        AppLogger.i("PREFERENCES", "Saving credentials: user=$trimmedUser, remember=$remember")
+        AppLogger.i("PREFERENCES", "Saving credentials: user=$trimmedUser, remember=$remember, isVerified=$isVerified")
         if (prefs != null) {
             prefs.edit().apply {
                 putBoolean(KEY_REMEMBER_ME, remember)
                 if (remember) {
                     putString(KEY_USERNAME, trimmedUser)
                     putString(KEY_PASSWORD, pass)
+                    putBoolean(KEY_CREDENTIALS_VERIFIED, isVerified)
                 } else {
                     remove(KEY_USERNAME)
                     remove(KEY_PASSWORD)
+                    remove(KEY_CREDENTIALS_VERIFIED)
                 }
                 apply()
             }
@@ -160,9 +191,11 @@ open class PreferencesManager(context: Context? = null) {
         if (remember) {
             memoryStore[KEY_USERNAME] = trimmedUser
             memoryStore[KEY_PASSWORD] = pass
+            memoryStore[KEY_CREDENTIALS_VERIFIED] = isVerified
         } else {
             memoryStore.remove(KEY_USERNAME)
             memoryStore.remove(KEY_PASSWORD)
+            memoryStore.remove(KEY_CREDENTIALS_VERIFIED)
         }
     }
 
@@ -172,12 +205,14 @@ open class PreferencesManager(context: Context? = null) {
             prefs.edit().apply {
                 remove(KEY_USERNAME)
                 remove(KEY_PASSWORD)
+                remove(KEY_CREDENTIALS_VERIFIED)
                 putBoolean(KEY_REMEMBER_ME, true)
                 apply()
             }
         }
         memoryStore.remove(KEY_USERNAME)
         memoryStore.remove(KEY_PASSWORD)
+        memoryStore.remove(KEY_CREDENTIALS_VERIFIED)
         memoryStore[KEY_REMEMBER_ME] = true
     }
 

@@ -29,8 +29,8 @@ class AutoLoginWorker(
 
         AppLogger.i("AUTO_LOGIN_WORKER", "Background auto-login worker triggered.")
 
-        if (!prefs.hasSavedCredentials()) {
-            AppLogger.d("AUTO_LOGIN_WORKER", "No saved credentials found for background login. Skipping.")
+        if (!prefs.hasVerifiedCredentials()) {
+            AppLogger.d("AUTO_LOGIN_WORKER", "No verified saved credentials found for background login. Skipping.")
             return Result.success()
         }
 
@@ -101,6 +101,7 @@ class AutoLoginWorker(
                             when (submitResult) {
                                 is LoginSubmitResult.Success -> {
                                     prefs.lastBackgroundLoginTime = System.currentTimeMillis()
+                                    prefs.markCredentialsVerified(true)
                                     AppLogger.i("AUTO_LOGIN_WORKER", "Background auto-login completed successfully!")
                                     if (prefs.enableBackgroundNotifications) {
                                         NotificationHelper.showLoginSuccessNotification(context)
@@ -108,7 +109,8 @@ class AutoLoginWorker(
                                     Result.success()
                                 }
                                 is LoginSubmitResult.AuthFailed -> {
-                                    AppLogger.w("AUTO_LOGIN_WORKER", "Authentication failed: ${submitResult.message}")
+                                    prefs.markCredentialsVerified(false)
+                                    AppLogger.w("AUTO_LOGIN_WORKER", "Authentication failed in background: ${submitResult.message}")
                                     if (prefs.enableBackgroundNotifications) {
                                         NotificationHelper.showLoginFailedNotification(context, submitResult.message)
                                     }
