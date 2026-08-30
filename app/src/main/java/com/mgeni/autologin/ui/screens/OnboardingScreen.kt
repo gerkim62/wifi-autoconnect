@@ -71,6 +71,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.mgeni.autologin.data.AppLogger
 import com.mgeni.autologin.data.OemBatteryHelper
+import com.mgeni.autologin.ui.components.ConfirmationDialog
 import com.mgeni.autologin.ui.theme.EmeraldContainer
 import com.mgeni.autologin.ui.theme.EmeraldPrimary
 import kotlinx.coroutines.launch
@@ -145,6 +146,7 @@ fun OnboardingScreen(
     var isBatteryExempt by remember {
         mutableStateOf(OemBatteryHelper.isIgnoringBatteryOptimizations(context))
     }
+    var showBatteryManageDialog by remember { mutableStateOf(false) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -161,6 +163,22 @@ fun OnboardingScreen(
 
     val handleCompletion: () -> Unit = {
         onComplete(wantsNotifications)
+    }
+
+    if (showBatteryManageDialog) {
+        ConfirmationDialog(
+            title = "Turn off background running?",
+            message = "If turned off, WifiAuto cannot sign you in automatically in the background when the app is closed or your phone is locked — you will need to open the app manually.\n\nTo turn it off, Android requires changing battery limits in system settings. Tap below to go to App Info and choose 'Optimized' or 'Restricted'.",
+            confirmButtonText = "Open Settings",
+            isDestructive = false,
+            icon = Icons.Outlined.BatteryChargingFull,
+            onConfirm = {
+                showBatteryManageDialog = false
+                AppLogger.i("ONBOARDING_UI", "User confirmed redirection to App Details Settings from onboarding battery dialog.")
+                OemBatteryHelper.openAppDetailsSettings(context)
+            },
+            onDismiss = { showBatteryManageDialog = false }
+        )
     }
 
     Surface(
@@ -365,7 +383,7 @@ fun OnboardingScreen(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
-                                text = "Optional settings for seamless auto-login. You can adjust these anytime in Settings.",
+                                text = "Configure background sign-in and notifications. You can change these anytime in Settings.",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center
@@ -439,9 +457,13 @@ fun OnboardingScreen(
                                 // 2. Keep app running (Battery optimization exemption)
                                 val handleBatteryClick = {
                                     AppLogger.i("ONBOARDING_UI", "Battery optimization option tapped in onboarding (currently exempt=$isBatteryExempt)")
-                                    val launched = OemBatteryHelper.openBatteryOptimizationSettings(context)
-                                    if (!launched) {
-                                        AppLogger.w("ONBOARDING_UI", "Failed to launch battery optimization settings from OnboardingScreen.")
+                                    if (isBatteryExempt) {
+                                        showBatteryManageDialog = true
+                                    } else {
+                                        val launched = OemBatteryHelper.openBatteryOptimizationSettings(context)
+                                        if (!launched) {
+                                            AppLogger.w("ONBOARDING_UI", "Failed to launch battery optimization settings from OnboardingScreen.")
+                                        }
                                     }
                                 }
 

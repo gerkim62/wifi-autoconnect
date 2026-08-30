@@ -73,10 +73,17 @@ class AutoLoginWorker(
                 }
                 is ConnectivityResult.CaptiveDetected -> {
                     val redirectHint = connectivityResult.portalRedirectUrl
+                    val configuredUrl = prefs.portalUrl.trim()
+                    val isCustomUrlConfigured = configuredUrl.isNotBlank() && configuredUrl != PreferencesManager.DEFAULT_PORTAL_URL
                     val detectedGatewayIp = cm.getLinkProperties(wifiNetwork)?.routes
                         ?.firstOrNull { it.isDefaultRoute && it.gateway != null }?.gateway?.hostAddress
-                    val targetUrl = redirectHint ?: (detectedGatewayIp?.let { "http://$it/login.html" } ?: prefs.portalUrl)
-                    AppLogger.i("AUTO_LOGIN_WORKER", "Targeting login page URL: $targetUrl (redirectHint=$redirectHint, gatewayIp=$detectedGatewayIp)")
+
+                    val targetUrl = when {
+                        !redirectHint.isNullOrBlank() && redirectHint.startsWith("http") -> redirectHint
+                        isCustomUrlConfigured -> configuredUrl
+                        else -> detectedGatewayIp?.let { "http://$it/login.html" } ?: configuredUrl.ifBlank { PreferencesManager.DEFAULT_PORTAL_URL }
+                    }
+                    AppLogger.i("AUTO_LOGIN_WORKER", "Targeting login page URL: $targetUrl (redirectHint=$redirectHint, isCustomConfigured=$isCustomUrlConfigured, gatewayIp=$detectedGatewayIp)")
                     val pageResult = portalClient.fetchLoginPage(targetUrl)
                     
                     when (pageResult) {

@@ -34,11 +34,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+
 /**
  * Premium Material 3 Confirmation Dialog
  * Styled with 24.dp rounded corners, icon container, clear hierarchy,
  * and filled primary + outlined cancel buttons.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ConfirmationDialog(
     title: String,
@@ -110,14 +113,13 @@ fun ConfirmationDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Row(
+                androidx.compose.foundation.layout.FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     androidx.compose.material3.TextButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.padding(end = 8.dp)
+                        onClick = onDismiss
                     ) {
                         Text(
                             text = dismissButtonText,

@@ -283,15 +283,26 @@ class MainViewModel(
     }
 
     private suspend fun fetchCaptivePortalLoginPage(redirectHint: String? = null): PageFetchResult {
-        val portalUrl = if (!redirectHint.isNullOrBlank() && redirectHint.startsWith("http")) {
-            redirectHint
-        } else {
-            val gatewayIp = networkMonitor.getActiveWifiGatewayIp()
-            if (!gatewayIp.isNullOrBlank()) {
-                AppLogger.d("VIEW_MODEL", "Using dynamically resolved Wi-Fi gateway IP: $gatewayIp")
-                "http://$gatewayIp/login.html"
-            } else {
-                preferencesManager.portalUrl
+        val configuredUrl = preferencesManager.portalUrl.trim()
+        val isCustomUrlConfigured = configuredUrl.isNotBlank() && configuredUrl != PreferencesManager.DEFAULT_PORTAL_URL
+
+        val portalUrl = when {
+            !redirectHint.isNullOrBlank() && redirectHint.startsWith("http") -> {
+                AppLogger.d("VIEW_MODEL", "Using probe redirect hint URL: $redirectHint")
+                redirectHint
+            }
+            isCustomUrlConfigured -> {
+                AppLogger.d("VIEW_MODEL", "Using user-configured preferred Portal URL from Settings: $configuredUrl")
+                configuredUrl
+            }
+            else -> {
+                val gatewayIp = networkMonitor.getActiveWifiGatewayIp()
+                if (!gatewayIp.isNullOrBlank()) {
+                    AppLogger.d("VIEW_MODEL", "Using dynamically resolved Wi-Fi gateway IP: $gatewayIp")
+                    "http://$gatewayIp/login.html"
+                } else {
+                    configuredUrl.ifBlank { PreferencesManager.DEFAULT_PORTAL_URL }
+                }
             }
         }
 

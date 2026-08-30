@@ -185,14 +185,14 @@ fun SettingsScreen(
 
     if (showBatteryManageDialog) {
         ConfirmationDialog(
-            title = "Background Running is Active",
-            message = "WifiAuto is already exempted from battery optimization and running unrestricted.\n\nTo restore battery limits, select 'Optimized' or 'Restricted' in Android App Info Settings.",
-            confirmButtonText = "Open App Settings",
+            title = "Turn off background running?",
+            message = "If turned off, WifiAuto cannot sign you in automatically in the background when the app is closed or your phone is locked — you will need to open the app manually.\n\nTo turn it off, Android requires changing battery limits in system settings. Tap below to go to App Info and choose 'Optimized' or 'Restricted'.",
+            confirmButtonText = "Open Settings",
             isDestructive = false,
             icon = Icons.Outlined.BatteryChargingFull,
             onConfirm = {
                 showBatteryManageDialog = false
-                AppLogger.i("SETTINGS_UI", "User confirmed opening App Details Settings from battery management dialog.")
+                AppLogger.i("SETTINGS_UI", "User confirmed redirection to App Details Settings from battery dialog.")
                 OemBatteryHelper.openAppDetailsSettings(context)
             },
             onDismiss = { showBatteryManageDialog = false }

@@ -11,6 +11,7 @@ import com.mgeni.autologin.ui.viewmodel.MainViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -25,12 +26,13 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var testDispatcher: TestDispatcher
     private lateinit var preferencesManager: PreferencesManager
     private lateinit var networkMonitor: NetworkMonitor
 
     @Before
     fun setUp() {
+        testDispatcher = StandardTestDispatcher()
         Dispatchers.setMain(testDispatcher)
         preferencesManager = PreferencesManager(null)
         preferencesManager.hasCompletedOnboarding = true
@@ -42,7 +44,7 @@ class MainViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private class FakePortalClient(
+    private open class FakePortalClient(
         private val connectivityResult: ConnectivityResult = ConnectivityResult.AlreadyConnected
     ) : PortalClient() {
         override suspend fun check204Connectivity(connectivityUrl: String): ConnectivityResult {
@@ -614,6 +616,29 @@ class MainViewModelTest {
         // Dismiss Onboarding
         viewModel.dismissOnboarding()
         assertTrue(viewModel.uiState.value is MainUiState.AlreadyConnected)
+    }
+
+    @Test
+    fun `custom configured portal URL in settings is prioritized when checking portal page`() = runTest(testDispatcher) {
+        preferencesManager.checkInternetOnStartup = false
+        preferencesManager.portalUrl = "http://10.0.2.2:8080/custom-portal.html"
+
+        var requestedUrl: String? = null
+        val fakeClient = object : FakePortalClient(ConnectivityResult.CaptiveDetected(null)) {
+            override suspend fun fetchLoginPage(portalUrl: String): PageFetchResult {
+                requestedUrl = portalUrl
+                return PageFetchResult.Success("tag123", portalUrl, "")
+            }
+        }
+
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        advanceUntilIdle()
+        assertEquals("http://10.0.2.2:8080/custom-portal.html", requestedUrl)
     }
 }
 
