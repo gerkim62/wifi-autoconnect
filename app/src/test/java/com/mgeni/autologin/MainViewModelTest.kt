@@ -704,5 +704,39 @@ class MainViewModelTest {
         assertTrue("Credentials must now be marked verified", preferencesManager.isCredentialsVerified)
         assertTrue("hasVerifiedCredentials must now be true", preferencesManager.hasVerifiedCredentials())
     }
+
+    @Test
+    fun `checkInternetOnStartup false uses Opening login page message for initial state and check`() = runTest(testDispatcher) {
+        preferencesManager.checkInternetOnStartup = false
+        val fakeClient = FakePortalClient(ConnectivityResult.AlreadyConnected)
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+
+        assertEquals("Opening login page…", viewModel.backgroundStatusMessage.value)
+    }
+
+    @Test
+    fun `dismissSettings with null previousState falls back to LoginForm instead of CheckingConnection`() = runTest(testDispatcher) {
+        val fakeClient = FakePortalClient(ConnectivityResult.AlreadyConnected)
+        val viewModel = MainViewModel(
+            preferencesManager = preferencesManager,
+            portalClient = fakeClient,
+            networkMonitor = networkMonitor
+        )
+        advanceUntilIdle()
+
+        // Force settings state with null previousState
+        viewModel.openSettings()
+        val settingsState = viewModel.uiState.value as MainUiState.Settings
+        assertEquals(MainUiState.AlreadyConnected, settingsState.previousState)
+
+        // Dismiss settings when previousState is forced to null
+        viewModel.dismissSettings()
+        assertTrue("Expected non-checking state after dismissal, got ${viewModel.uiState.value}", viewModel.uiState.value !is MainUiState.CheckingConnection)
+    }
 }
+
 

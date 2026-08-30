@@ -35,13 +35,31 @@ class MainViewModel(
         const val SLOW_OPERATION_NOTICE_MILLIS = 5_000L
     }
 
-    private val _uiState = MutableStateFlow<MainUiState>(MainUiState.CheckingConnection())
+    private fun determineInitialUiState(): MainUiState {
+        return when {
+            !preferencesManager.hasCompletedOnboarding -> MainUiState.Onboarding()
+            !preferencesManager.checkInternetOnStartup -> MainUiState.CheckingConnection(
+                isTakingLong = false,
+                message = "Opening login page…"
+            )
+            else -> MainUiState.CheckingConnection(
+                isTakingLong = false,
+                message = "Checking connection…"
+            )
+        }
+    }
+
+    private fun determineInitialCheckingMessage(): String {
+        return if (!preferencesManager.checkInternetOnStartup) "Opening login page…" else "Checking connection…"
+    }
+
+    private val _uiState = MutableStateFlow<MainUiState>(determineInitialUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
     private val _isBackgroundChecking = MutableStateFlow(false)
     val isBackgroundChecking: StateFlow<Boolean> = _isBackgroundChecking.asStateFlow()
 
-    private val _backgroundStatusMessage = MutableStateFlow("Checking connection…")
+    private val _backgroundStatusMessage = MutableStateFlow(determineInitialCheckingMessage())
     val backgroundStatusMessage: StateFlow<String> = _backgroundStatusMessage.asStateFlow()
 
     val logCount: StateFlow<Int> = AppLogger.logCount
@@ -172,19 +190,22 @@ class MainViewModel(
             val currentState = _uiState.value
             val isModal = currentState is MainUiState.Settings || currentState is MainUiState.About
 
+            val isSkippingProbe = !preferencesManager.checkInternetOnStartup
+            val checkingMsg = if (isSkippingProbe) "Opening login page…" else "Checking connection…"
+
             if (isUserInitiated && !isModal) {
-                _uiState.value = MainUiState.CheckingConnection(isTakingLong = false)
+                _uiState.value = MainUiState.CheckingConnection(isTakingLong = false, message = checkingMsg)
                 _isBackgroundChecking.value = false
             } else {
                 _isBackgroundChecking.value = true
-                _backgroundStatusMessage.value = "Checking connection…"
+                _backgroundStatusMessage.value = checkingMsg
             }
 
             val checkingStartedAt = System.currentTimeMillis()
             portalClient.bindToNetwork(networkMonitor.activeWifiNetwork.value)
             networkMonitor.updateNetworkStates()
 
-            if (!preferencesManager.checkInternetOnStartup) {
+            if (isSkippingProbe) {
                 AppLogger.i("VIEW_MODEL", "checkInternetOnStartup is disabled; bypassing 204 check and loading portal directly.")
                 if (isUserInitiated && !isModal) {
                     keepCheckingScreenVisible(checkingStartedAt)
@@ -198,10 +219,15 @@ class MainViewModel(
             val slowNoticeJob = launch {
                 delay(SLOW_OPERATION_NOTICE_MILLIS)
                 if (_uiState.value is MainUiState.CheckingConnection) {
-                    _uiState.value = MainUiState.CheckingConnection(isTakingLong = true)
+                    val currentMsg = (_uiState.value as MainUiState.CheckingConnection).message
+                    _uiState.value = MainUiState.CheckingConnection(isTakingLong = true, message = currentMsg)
                 }
                 if (_isBackgroundChecking.value) {
-                    _backgroundStatusMessage.value = "Connection check is taking longer than usual…"
+                    _backgroundStatusMessage.value = if (isSkippingProbe) {
+                        "Loading login page is taking longer than usual…"
+                    } else {
+                        "Connection check is taking longer than usual…"
+                    }
                 }
             }
 
@@ -278,6 +304,8 @@ class MainViewModel(
         val isModal = currentState is MainUiState.Settings || currentState is MainUiState.About
         if (isUserInitiated && !isModal) {
             _uiState.value = MainUiState.CheckingConnection(message = "Opening login page…")
+        } else {
+            _backgroundStatusMessage.value = "Opening login page…"
         }
         handlePortalPageResult(fetchCaptivePortalLoginPage(redirectHint), isUserInitiated = isUserInitiated)
     }
@@ -750,12 +778,25 @@ class MainViewModel(
         }
     }
 
+    private fun createSafeDismissFallback(): MainUiState {
+        return if (preferencesManager.hasVerifiedCredentials()) {
+            MainUiState.AlreadyConnected
+        } else {
+            MainUiState.LoginForm(
+                username = preferencesManager.username,
+                password = preferencesManager.password,
+                rememberMe = preferencesManager.rememberMe,
+                errorMessage = null
+            )
+        }
+    }
+
     /**
      * Returns from Settings without saving.
      */
     fun dismissSettings() {
         val previous = (_uiState.value as? MainUiState.Settings)?.previousState
-            ?: MainUiState.CheckingConnection()
+            ?: createSafeDismissFallback()
         _uiState.value = previous
     }
 
@@ -772,7 +813,7 @@ class MainViewModel(
      */
     fun dismissAbout() {
         val previous = (_uiState.value as? MainUiState.About)?.previousState
-            ?: MainUiState.CheckingConnection()
+            ?: createSafeDismissFallback()
         _uiState.value = previous
     }
 
@@ -783,7 +824,8 @@ class MainViewModel(
         AppLogger.i("VIEW_MODEL", "Onboarding completed by user (enableNotifications=$enableNotifications).")
         preferencesManager.enableBackgroundNotifications = enableNotifications
         preferencesManager.hasCompletedOnboarding = true
-        _uiState.value = MainUiState.CheckingConnection(isTakingLong = false)
+        val initialMsg = determineInitialCheckingMessage()
+        _uiState.value = MainUiState.CheckingConnection(isTakingLong = false, message = initialMsg)
         startConnectionCheck(isUserInitiated = true)
     }
 
@@ -810,7 +852,7 @@ class MainViewModel(
             return
         }
         val previous = (_uiState.value as? MainUiState.Onboarding)?.previousState
-            ?: MainUiState.CheckingConnection()
+            ?: createSafeDismissFallback()
         _uiState.value = previous
     }
 
