@@ -67,6 +67,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mgeni.autologin.BuildConfig
+import com.mgeni.autologin.data.OemBatteryHelper
 import com.mgeni.autologin.data.PreferencesManager
 import com.mgeni.autologin.ui.components.BannerType
 import com.mgeni.autologin.ui.components.ConfirmationDialog
@@ -452,45 +453,153 @@ fun AdvancedSettingsScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Battery Optimization Info / Shortcut
+                // Battery Optimization & Background Reliability Section
+                val isBatteryExempt = remember { OemBatteryHelper.isIgnoringBatteryOptimizations(context) }
+                val oemTip = remember { OemBatteryHelper.getOemSpecificTip() }
+                val oemVendor = remember { OemBatteryHelper.getOemVendor() }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
-                        .clickable {
-                            try {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                    val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                                    context.startActivity(intent)
-                                }
-                            } catch (_: Exception) {}
-                        }
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
                         .padding(14.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.BatteryChargingFull,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Battery optimization",
-                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
-                                color = MaterialTheme.colorScheme.onBackground
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.BatteryChargingFull,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
                             )
-                            Text(
-                                text = "Tap to open system battery settings and ensure seamless background triggers.",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Background reliability",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                Text(
+                                    text = "Prevent the system from killing background sign-in workers when locked.",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Status Pill
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isBatteryExempt) {
+                                    EmeraldContainer.copy(alpha = 0.7f)
+                                } else {
+                                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
+                                }
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isBatteryExempt) Icons.Outlined.CheckCircle else Icons.Outlined.WarningAmber,
+                                        contentDescription = null,
+                                        tint = if (isBatteryExempt) EmeraldPrimary else MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = if (isBatteryExempt) "Unrestricted" else "Optimized",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        ),
+                                        color = if (isBatteryExempt) EmeraldPrimary else MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
+
+                        // OEM Specific Advice Banner if applicable
+                        if (oemTip != null) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
+                                    .padding(horizontal = 10.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = oemTip,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontSize = 11.5.sp,
+                                        lineHeight = 16.sp
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Action Buttons Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Primary Configure Button
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                                    .clickable {
+                                        OemBatteryHelper.openBatteryOptimizationSettings(context)
+                                    }
+                                    .padding(vertical = 8.dp, horizontal = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (oemVendor != com.mgeni.autologin.data.OemBatteryHelper.OemVendor.GENERIC) {
+                                        "Configure ${oemVendor.displayName}"
+                                    } else {
+                                        "Configure battery settings"
+                                    },
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 12.sp
+                                    ),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            // Optional DontKillMyApp link if known OEM
+                            if (oemVendor != com.mgeni.autologin.data.OemBatteryHelper.OemVendor.GENERIC) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                                        .clickable {
+                                            OemBatteryHelper.openDontKillMyAppGuide(context)
+                                        }
+                                        .padding(vertical = 8.dp, horizontal = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Guide",
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = 12.sp
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
                     }
                 }

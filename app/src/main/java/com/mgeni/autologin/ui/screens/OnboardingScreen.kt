@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Notifications
@@ -54,17 +55,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mgeni.autologin.data.OemBatteryHelper
 import kotlinx.coroutines.launch
 
 private data class OnboardingStep(
     val title: String,
     val description: String,
     val icon: ImageVector,
-    val isNotificationOptIn: Boolean = false
+    val isNotificationOptIn: Boolean = false,
+    val isBackgroundReliabilityTip: Boolean = false
 )
 
 private val onboardingSteps = listOf(
@@ -81,7 +85,8 @@ private val onboardingSteps = listOf(
     OnboardingStep(
         title = "Background Auto-Login",
         description = "WifiAuto detects guest captive portals and logs in silently in the background—even if the app is closed.",
-        icon = Icons.Outlined.Autorenew
+        icon = Icons.Outlined.Autorenew,
+        isBackgroundReliabilityTip = true
     ),
     OnboardingStep(
         title = "Stay Informed",
@@ -228,6 +233,70 @@ fun OnboardingScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
+
+                    if (step.isBackgroundReliabilityTip) {
+                        val context = LocalContext.current
+                        val oemVendor = remember { OemBatteryHelper.getOemVendor() }
+                        val oemTip = remember { OemBatteryHelper.getOemSpecificTip() }
+                        var isExempt by remember { mutableStateOf(OemBatteryHelper.isIgnoringBatteryOptimizations(context)) }
+
+                        if (oemTip != null || !isExempt) {
+                            Spacer(modifier = Modifier.height(20.dp))
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .clickable {
+                                        OemBatteryHelper.openBatteryOptimizationSettings(context)
+                                        isExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
+                                    },
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.BatteryChargingFull,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = if (oemVendor != OemBatteryHelper.OemVendor.GENERIC) {
+                                                "${oemVendor.displayName} Setup"
+                                            } else {
+                                                "Background Reliability"
+                                            },
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            ),
+                                            color = MaterialTheme.colorScheme.onBackground
+                                        )
+                                        Text(
+                                            text = oemTip ?: "Allow background activity so your phone doesn't freeze the login worker.",
+                                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (isExempt) "Done" else "Allow",
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     if (step.isNotificationOptIn) {
                         Spacer(modifier = Modifier.height(24.dp))
