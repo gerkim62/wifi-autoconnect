@@ -40,11 +40,10 @@ sealed interface MainUiState {
         val savedUsername: String = ""
     ) : MainUiState
 
-    // 8. Advanced Settings screen
-    data class AdvancedSettings(
+    // 8. Settings screen
+    data class Settings(
         val portalUrl: String,
         val checkInternetOnStartup: Boolean = true,
-        val enableBackgroundAutoLogin: Boolean = true,
         val enableBackgroundNotifications: Boolean = false,
         val hasSavedCredentials: Boolean = false,
         val isDefault: Boolean = true,

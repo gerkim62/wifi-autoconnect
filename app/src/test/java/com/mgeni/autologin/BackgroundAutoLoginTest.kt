@@ -17,14 +17,10 @@ class BackgroundAutoLoginTest {
         val prefs = PreferencesManager()
 
         // Defaults
-        assertTrue(prefs.enableBackgroundAutoLogin)
         assertFalse(prefs.enableBackgroundNotifications)
         assertEquals(0L, prefs.lastBackgroundLoginTime)
 
         // Mutate
-        prefs.enableBackgroundAutoLogin = false
-        assertFalse(prefs.enableBackgroundAutoLogin)
-
         prefs.enableBackgroundNotifications = true
         assertTrue(prefs.enableBackgroundNotifications)
 
@@ -41,15 +37,13 @@ class BackgroundAutoLoginTest {
     }
 
     @Test
-    fun `MainUiState AdvancedSettings retains background preferences`() {
-        val settings = MainUiState.AdvancedSettings(
+    fun `MainUiState Settings retains background notifications preference`() {
+        val settings = MainUiState.Settings(
             portalUrl = "http://10.10.10.10/login.html",
             checkInternetOnStartup = true,
-            enableBackgroundAutoLogin = true,
             enableBackgroundNotifications = true
         )
 
-        assertTrue(settings.enableBackgroundAutoLogin)
         assertTrue(settings.enableBackgroundNotifications)
     }
 }

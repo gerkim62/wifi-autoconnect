@@ -41,9 +41,9 @@ class MainUiStateTest {
     }
 
     @Test
-    fun `AdvancedSettings stores previous state and error message`() {
+    fun `Settings stores previous state and error message`() {
         val previous = MainUiState.LoginForm(username = "user1")
-        val settings = MainUiState.AdvancedSettings(
+        val settings = MainUiState.Settings(
             portalUrl = "http://10.10.10.10/login.html",
             isDefault = true,
             errorMessage = "Invalid URL format",

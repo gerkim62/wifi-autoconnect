@@ -26,13 +26,13 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.mgeni.autologin.ui.components.BackgroundLoadingIndicator
 import com.mgeni.autologin.ui.screens.AboutScreen
-import com.mgeni.autologin.ui.screens.AdvancedSettingsScreen
 import com.mgeni.autologin.ui.screens.AlreadyConnectedScreen
 import com.mgeni.autologin.ui.screens.ConnectingScreen
 import com.mgeni.autologin.ui.screens.LoginFailedScreen
 import com.mgeni.autologin.ui.screens.LoginScreen
 import com.mgeni.autologin.ui.screens.NotOnGuestScreen
 import com.mgeni.autologin.ui.screens.OnboardingScreen
+import com.mgeni.autologin.ui.screens.SettingsScreen
 import com.mgeni.autologin.ui.screens.SplashScreen
 import com.mgeni.autologin.ui.screens.SuccessScreen
 import com.mgeni.autologin.ui.viewmodel.MainUiState
@@ -47,7 +47,7 @@ private fun MainUiState.screenOrder(): Int = when (this) {
     is MainUiState.LoginFailed -> 5
     is MainUiState.AlreadyConnected -> 6
     is MainUiState.Success -> 6
-    is MainUiState.AdvancedSettings -> 7
+    is MainUiState.Settings -> 7
     is MainUiState.About -> 8
 }
 
@@ -119,7 +119,7 @@ fun MgeniApp(
                     SplashScreen(
                         message = state.message,
                         isTakingLong = state.isTakingLong,
-                        onSettingsClick = { viewModel.openAdvancedSettings() },
+                        onSettingsClick = { viewModel.openSettings() },
                         onAboutClick = { viewModel.openAbout() },
                         onHelpClick = { viewModel.openOnboarding() }
                     )
@@ -129,7 +129,7 @@ fun MgeniApp(
                     AlreadyConnectedScreen(
                         networkState = networkState,
                         onCloseClick = { (context as? Activity)?.finish() },
-                        onSettingsClick = { viewModel.openAdvancedSettings() },
+                        onSettingsClick = { viewModel.openSettings() },
                         onAboutClick = { viewModel.openAbout() },
                         onHelpClick = { viewModel.openOnboarding() },
                         onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
@@ -142,10 +142,10 @@ fun MgeniApp(
                         errorMessage = state.errorMessage,
                         networkState = networkState,
                         onRetryClick = { viewModel.startConnectionCheck(isUserInitiated = true) },
-                        onSettingsClick = { viewModel.openAdvancedSettings() },
+                        onSettingsClick = { viewModel.openSettings() },
                         onAboutClick = { viewModel.openAbout() },
                         onHelpClick = { viewModel.openOnboarding() },
-                        onRestoreDefaultClick = { viewModel.resetAdvancedSettingsToDefault() },
+                        onRestoreDefaultClick = { viewModel.resetSettingsToDefault() },
                         onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
                         isRefreshing = isBackgroundChecking
                     )
@@ -161,7 +161,7 @@ fun MgeniApp(
                         onConnectClick = { username, password, rememberMe ->
                             viewModel.submitLoginForm(username, password, rememberMe)
                         },
-                        onSettingsClick = { viewModel.openAdvancedSettings() },
+                        onSettingsClick = { viewModel.openSettings() },
                         onAboutClick = { viewModel.openAbout() },
                         onHelpClick = { viewModel.openOnboarding() },
                         onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
@@ -174,7 +174,7 @@ fun MgeniApp(
                         statusMessage = state.statusMessage,
                         detailMessage = state.detailMessage,
                         isTakingLong = state.isTakingLong,
-                        onSettingsClick = { viewModel.openAdvancedSettings() },
+                        onSettingsClick = { viewModel.openSettings() },
                         onAboutClick = { viewModel.openAbout() }
                     )
                 }
@@ -183,7 +183,7 @@ fun MgeniApp(
                     SuccessScreen(
                         networkState = networkState,
                         onCloseClick = { (context as? Activity)?.finish() },
-                        onSettingsClick = { viewModel.openAdvancedSettings() },
+                        onSettingsClick = { viewModel.openSettings() },
                         onAboutClick = { viewModel.openAbout() },
                         onHelpClick = { viewModel.openOnboarding() },
                         onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
@@ -202,7 +202,7 @@ fun MgeniApp(
                         onEditCredentialsClick = { username ->
                             viewModel.editCredentials(username)
                         },
-                        onSettingsClick = { viewModel.openAdvancedSettings() },
+                        onSettingsClick = { viewModel.openSettings() },
                         onAboutClick = { viewModel.openAbout() },
                         onHelpClick = { viewModel.openOnboarding() },
                         onRefresh = { viewModel.startConnectionCheck(isUserInitiated = true) },
@@ -210,33 +210,33 @@ fun MgeniApp(
                     )
                 }
 
-                is MainUiState.AdvancedSettings -> {
+                is MainUiState.Settings -> {
                     BackHandler {
-                        viewModel.dismissAdvancedSettings()
+                        viewModel.dismissSettings()
                     }
 
-                    AdvancedSettingsScreen(
+                    SettingsScreen(
                         currentPortalUrl = state.portalUrl,
                         initialCheckInternetOnStartup = state.checkInternetOnStartup,
-                        initialEnableBackgroundAutoLogin = state.enableBackgroundAutoLogin,
                         initialEnableBackgroundNotifications = state.enableBackgroundNotifications,
                         hasSavedCredentials = state.hasSavedCredentials,
                         errorMessage = state.errorMessage,
                         successMessage = state.successMessage,
                         logCount = logCount,
-                        onSaveClick = { newUrl, checkInternetOnStartup, enableAutoLogin, enableNotifications ->
-                            viewModel.saveAdvancedSettings(newUrl, checkInternetOnStartup, enableAutoLogin, enableNotifications)
-                            if (enableAutoLogin) {
-                                BackgroundManager.registerBackgroundNetworkCallback(context)
-                            } else {
-                                BackgroundManager.unregisterBackgroundNetworkCallback(context)
-                            }
+                        onSavePortalUrl = { newUrl ->
+                            viewModel.savePortalUrl(newUrl)
+                        },
+                        onToggleCheckInternet = { enabled ->
+                            viewModel.toggleCheckInternetOnStartup(enabled)
+                        },
+                        onToggleNotifications = { enabled ->
+                            viewModel.toggleBackgroundNotifications(enabled)
                         },
                         onClearCredentialsClick = {
                             viewModel.clearSavedCredentials()
                         },
                         onResetToDefaultClick = {
-                            viewModel.resetAdvancedSettingsToDefault()
+                            viewModel.resetSettingsToDefault()
                             BackgroundManager.registerBackgroundNetworkCallback(context)
                         },
                         onExportLogsClick = {
@@ -246,7 +246,7 @@ fun MgeniApp(
                             viewModel.clearLogs(context)
                         },
                         onBackClick = {
-                            viewModel.dismissAdvancedSettings()
+                            viewModel.dismissSettings()
                         }
                     )
                 }

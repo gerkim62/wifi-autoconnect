@@ -29,11 +29,6 @@ class AutoLoginWorker(
 
         AppLogger.i("AUTO_LOGIN_WORKER", "Background auto-login worker triggered.")
 
-        if (!prefs.enableBackgroundAutoLogin) {
-            AppLogger.d("AUTO_LOGIN_WORKER", "Background auto-login disabled in settings. Skipping.")
-            return Result.success()
-        }
-
         if (!prefs.hasSavedCredentials()) {
             AppLogger.d("AUTO_LOGIN_WORKER", "No saved credentials found for background login. Skipping.")
             return Result.success()

@@ -1,11 +1,10 @@
 package com.mgeni.autologin.ui.screens
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import android.content.pm.PackageManager
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -71,43 +70,40 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.mgeni.autologin.data.OemBatteryHelper
+import com.mgeni.autologin.ui.theme.EmeraldContainer
+import com.mgeni.autologin.ui.theme.EmeraldPrimary
 import kotlinx.coroutines.launch
 
-private data class OnboardingStep(
+private data class WelcomeItem(
     val title: String,
     val description: String,
-    val icon: ImageVector,
-    val isPermissionsStep: Boolean = false
+    val icon: ImageVector
 )
 
-private val onboardingSteps = listOf(
-    OnboardingStep(
+private val welcomeItems = listOf(
+    WelcomeItem(
         title = "The Problem",
         description = "The \"guest\" Wi-Fi requires you to enter your username and password every time.",
         icon = Icons.Outlined.Wifi
     ),
-    OnboardingStep(
+    WelcomeItem(
         title = "The Solution",
         description = "Save the Wi-Fi username and password securely in this app. Once and for all.",
         icon = Icons.Outlined.Lock
     ),
-    OnboardingStep(
+    WelcomeItem(
         title = "How It Works",
         description = "Whenever you connect to the Wi-Fi, just open this app. It authenticates instantly.",
         icon = Icons.Outlined.RocketLaunch
-    ),
-    OnboardingStep(
-        title = "Permissions",
-        description = "Optional settings for the best experience. You can change these anytime.",
-        icon = Icons.Outlined.Shield,
-        isPermissionsStep = true
     )
 )
 
+private const val TOTAL_PAGES = 2
+
 /**
- * Pure KISS Onboarding Screen.
- * Minimalist, classic mobile layout:
- * 1. The Problem -> 2. The Solution -> 3. How It Works -> 4. Permissions (Optional & KISS).
+ * 2-Page Onboarding Screen.
+ * Page 1: Welcome (The Problem, The Solution, How It Works - compact, no-scroll cards).
+ * Page 2: Permissions (Login notifications toggle + Keep app running background fix).
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -119,9 +115,9 @@ fun OnboardingScreen(
     onDismiss: () -> Unit = { onComplete(false) }
 ) {
     val context = LocalContext.current
-    val pagerState = rememberPagerState(pageCount = { onboardingSteps.size })
+    val pagerState = rememberPagerState(pageCount = { TOTAL_PAGES })
     val coroutineScope = rememberCoroutineScope()
-    val isLastPage = pagerState.currentPage == onboardingSteps.size - 1
+    val isLastPage = pagerState.currentPage == TOTAL_PAGES - 1
 
     var wantsNotifications by remember(initialEnableNotifications) { mutableStateOf(initialEnableNotifications) }
 
@@ -219,148 +215,252 @@ fun OnboardingScreen(
                     .weight(1f)
                     .fillMaxWidth()
             ) { pageIndex ->
-                val step = onboardingSteps[pageIndex]
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 28.dp)
-                        .verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    // Big Clean Hero Icon
-                    Box(
-                        modifier = Modifier
-                            .size(92.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = step.icon,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(48.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(28.dp))
-
-                    // Title
-                    Text(
-                        text = step.title,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 24.sp,
-                            lineHeight = 32.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Description
-                    Text(
-                        text = step.description,
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            lineHeight = 22.sp,
-                            fontSize = 15.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-
-                    // Step 4: Permissions List (KISS)
-                    if (step.isPermissionsStep) {
-                        Spacer(modifier = Modifier.height(24.dp))
-
+                when (pageIndex) {
+                    0 -> {
+                        // Page 1: Welcome & 3 Core Concepts
                         Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 24.dp)
+                                .verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            // 1. Notification Toggle
-                            Surface(
+                            Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .clickable { toggleNotifications() },
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                                shape = RoundedCornerShape(16.dp)
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(38.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Notifications,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.width(14.dp))
-
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = "Login notifications",
-                                            style = MaterialTheme.typography.titleMedium.copy(
-                                                fontSize = 14.5.sp,
-                                                fontWeight = FontWeight.SemiBold
-                                            ),
-                                            color = MaterialTheme.colorScheme.onBackground
-                                        )
-                                        Text(
-                                            text = "Brief alert when auto-login succeeds",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-
-                                    Switch(
-                                        checked = wantsNotifications,
-                                        onCheckedChange = { toggleNotifications() },
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                                            checkedTrackColor = MaterialTheme.colorScheme.primary
-                                        )
-                                    )
-                                }
+                                Icon(
+                                    imageVector = Icons.Outlined.Wifi,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(38.dp)
+                                )
                             }
 
-                            // 2. Battery / Background Reliability Button (shown ONLY if not already fixed)
-                            if (!isBatteryExempt) {
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Welcome to WifiAuto",
+                                style = MaterialTheme.typography.headlineSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 22.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onBackground,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = "Effortless automatic sign-in for guest Wi-Fi.",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            // 3 Compact Cards
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                welcomeItems.forEach { item ->
+                                    Surface(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                        shape = RoundedCornerShape(14.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(36.dp)
+                                                    .clip(CircleShape)
+                                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = item.icon,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(19.dp)
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.width(12.dp))
+
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = item.title,
+                                                    style = MaterialTheme.typography.titleMedium.copy(
+                                                        fontSize = 14.sp,
+                                                        fontWeight = FontWeight.SemiBold
+                                                    ),
+                                                    color = MaterialTheme.colorScheme.onBackground
+                                                )
+                                                Text(
+                                                    text = item.description,
+                                                    style = MaterialTheme.typography.bodySmall.copy(
+                                                        fontSize = 12.5.sp,
+                                                        lineHeight = 16.sp
+                                                    ),
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    1 -> {
+                        // Page 2: Permissions & Background Reliability
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 24.dp)
+                                .verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Shield,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(38.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Permissions & Reliability",
+                                style = MaterialTheme.typography.headlineSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 22.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onBackground,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = "Optional settings for seamless auto-login. You can adjust these anytime in Settings.",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // 1. Notification Toggle
                                 Surface(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .clickable {
-                                            OemBatteryHelper.openBatteryOptimizationSettings(context)
-                                            isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
-                                        },
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .clickable { toggleNotifications() },
                                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                                    shape = RoundedCornerShape(16.dp)
+                                    shape = RoundedCornerShape(14.dp)
                                 ) {
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Box(
                                             modifier = Modifier
-                                                .size(38.dp)
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Notifications,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(19.dp)
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.width(12.dp))
+
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Login notifications",
+                                                style = MaterialTheme.typography.titleMedium.copy(
+                                                    fontSize = 14.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                ),
+                                                color = MaterialTheme.colorScheme.onBackground
+                                            )
+                                            Text(
+                                                text = "Brief alert when auto-login succeeds",
+                                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+
+                                        Switch(
+                                            checked = wantsNotifications,
+                                            onCheckedChange = { toggleNotifications() },
+                                            colors = SwitchDefaults.colors(
+                                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                                checkedTrackColor = MaterialTheme.colorScheme.primary
+                                            )
+                                        )
+                                    }
+                                }
+
+                                // 2. Keep app running (Battery optimization exemption)
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .then(
+                                            if (!isBatteryExempt) {
+                                                Modifier.clickable {
+                                                    OemBatteryHelper.openBatteryOptimizationSettings(context)
+                                                    isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
+                                                }
+                                            } else {
+                                                Modifier
+                                            }
+                                        ),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                    shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
                                                 .clip(CircleShape)
                                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
                                             contentAlignment = Alignment.Center
@@ -369,37 +469,65 @@ fun OnboardingScreen(
                                                 imageVector = Icons.Outlined.BatteryChargingFull,
                                                 contentDescription = null,
                                                 tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(20.dp)
+                                                modifier = Modifier.size(19.dp)
                                             )
                                         }
 
-                                        Spacer(modifier = Modifier.width(14.dp))
+                                        Spacer(modifier = Modifier.width(12.dp))
 
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
-                                                text = "Unrestricted battery",
+                                                text = "Keep app running",
                                                 style = MaterialTheme.typography.titleMedium.copy(
-                                                    fontSize = 14.5.sp,
+                                                    fontSize = 14.sp,
                                                     fontWeight = FontWeight.SemiBold
                                                 ),
                                                 color = MaterialTheme.colorScheme.onBackground
                                             )
                                             Text(
-                                                text = "Keeps background auto-login reliable",
-                                                style = MaterialTheme.typography.bodySmall,
+                                                text = "Let this app stay active in the background so it can sign you in automatically.",
+                                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
 
                                         Spacer(modifier = Modifier.width(8.dp))
 
-                                        Text(
-                                            text = "Fix",
-                                            style = MaterialTheme.typography.labelMedium.copy(
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.primary
+                                        if (!isBatteryExempt) {
+                                            Text(
+                                                text = "Allow",
+                                                style = MaterialTheme.typography.labelMedium.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
                                             )
-                                        )
+                                        } else {
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = EmeraldContainer.copy(alpha = 0.7f)
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Outlined.CheckCircle,
+                                                        contentDescription = null,
+                                                        tint = EmeraldPrimary,
+                                                        modifier = Modifier.size(12.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(3.dp))
+                                                    Text(
+                                                        text = "Allowed",
+                                                        style = MaterialTheme.typography.labelSmall.copy(
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.SemiBold
+                                                        ),
+                                                        color = EmeraldPrimary
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -415,13 +543,13 @@ fun OnboardingScreen(
                     .padding(horizontal = 24.dp, vertical = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Page Indicator Dots
+                // Page Indicator Dots (2 dots)
                 Row(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(bottom = 20.dp)
                 ) {
-                    repeat(onboardingSteps.size) { index ->
+                    repeat(TOTAL_PAGES) { index ->
                         val isSelected = pagerState.currentPage == index
                         val width by animateDpAsState(
                             targetValue = if (isSelected) 24.dp else 8.dp,
@@ -512,4 +640,3 @@ fun OnboardingScreen(
         }
     }
 }
-

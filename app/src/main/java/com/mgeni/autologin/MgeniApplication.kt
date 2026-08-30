@@ -14,7 +14,7 @@ class MgeniApplication : Application() {
         NotificationHelper.createNotificationChannel(this)
 
         val prefs = PreferencesManager(this)
-        if (prefs.hasCompletedOnboarding && prefs.enableBackgroundAutoLogin) {
+        if (prefs.hasCompletedOnboarding) {
             BackgroundManager.registerBackgroundNetworkCallback(this)
         }
     }

@@ -106,14 +106,14 @@ class MainViewModelTest {
         )
 
         advanceUntilIdle()
-        viewModel.openAdvancedSettings()
-        assertTrue(viewModel.uiState.value is MainUiState.AdvancedSettings)
+        viewModel.openSettings()
+        assertTrue(viewModel.uiState.value is MainUiState.Settings)
 
-        // Drop Wi-Fi while in Advanced Settings
+        // Drop Wi-Fi while in Settings
         networkMonitor.emitNetworkStateForTesting(hasWifi = false, hasCellular = false)
         advanceUntilIdle()
 
-        assertTrue("Expected to remain in AdvancedSettings during editing, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.AdvancedSettings)
+        assertTrue("Expected to remain in Settings during editing, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.Settings)
     }
 
     @Test
@@ -206,14 +206,14 @@ class MainViewModelTest {
         )
 
         advanceUntilIdle()
-        viewModel.openAdvancedSettings()
+        viewModel.openSettings()
 
-        val settingsState = viewModel.uiState.value as MainUiState.AdvancedSettings
+        val settingsState = viewModel.uiState.value as MainUiState.Settings
         assertTrue("Expected hasSavedCredentials to be true initially", settingsState.hasSavedCredentials)
 
         viewModel.clearSavedCredentials()
         assertTrue("Expected hasSavedCredentials to be false after clear", !preferencesManager.hasSavedCredentials())
-        val updatedState = viewModel.uiState.value as MainUiState.AdvancedSettings
+        val updatedState = viewModel.uiState.value as MainUiState.Settings
         assertTrue("Expected state hasSavedCredentials to be false", !updatedState.hasSavedCredentials)
     }
 
@@ -314,7 +314,7 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `saveAdvancedSettings preserves settings screen and displays success message`() = runTest(testDispatcher) {
+    fun `savePortalUrl and toggles preserve settings screen and display success message`() = runTest(testDispatcher) {
         val fakeClient = FakePortalClient(ConnectivityResult.AlreadyConnected)
         val viewModel = MainViewModel(
             preferencesManager = preferencesManager,
@@ -323,16 +323,17 @@ class MainViewModelTest {
         )
 
         advanceUntilIdle()
-        viewModel.openAdvancedSettings()
-        assertTrue(viewModel.uiState.value is MainUiState.AdvancedSettings)
+        viewModel.openSettings()
+        assertTrue(viewModel.uiState.value is MainUiState.Settings)
 
-        viewModel.saveAdvancedSettings("http://192.168.1.1/login.html", checkInternetOnStartup = false)
+        viewModel.savePortalUrl("http://192.168.1.1/login.html")
+        viewModel.toggleCheckInternetOnStartup(false)
         advanceUntilIdle()
 
-        val settingsState = viewModel.uiState.value as MainUiState.AdvancedSettings
+        val settingsState = viewModel.uiState.value as MainUiState.Settings
         assertEquals("http://192.168.1.1/login.html", preferencesManager.portalUrl)
         assertFalse(preferencesManager.checkInternetOnStartup)
-        assertEquals("Settings saved successfully.", settingsState.successMessage)
+        assertEquals("Portal URL saved.", settingsState.successMessage)
     }
 
     @Test
@@ -443,10 +444,12 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `dismissAdvancedSettings restores updated state after successful settings save`() = runTest(testDispatcher) {
-        var clientResult: ConnectivityResult = ConnectivityResult.Unreachable("Initial failure")
+    fun `dismissSettings restores updated state after successful settings save`() = runTest(testDispatcher) {
+        var clientResult: ConnectivityResult = ConnectivityResult.Unreachable("Offline")
         val fakeClient = object : PortalClient() {
-            override suspend fun check204Connectivity(connectivityUrl: String): ConnectivityResult = clientResult
+            override suspend fun check204Connectivity(connectivityUrl: String): ConnectivityResult {
+                return clientResult
+            }
         }
 
         val viewModel = MainViewModel(
@@ -459,13 +462,13 @@ class MainViewModelTest {
         assertTrue(viewModel.uiState.value is MainUiState.NotOnGuestNetwork)
 
         // Open settings, change URL, and save with successful 204
-        viewModel.openAdvancedSettings()
+        viewModel.openSettings()
         clientResult = ConnectivityResult.AlreadyConnected
-        viewModel.saveAdvancedSettings("http://10.10.10.10/login.html")
+        viewModel.savePortalUrl("http://10.10.10.10/login.html")
         advanceUntilIdle()
 
         // Dismissing settings should return to AlreadyConnected, not the old NotOnGuestNetwork
-        viewModel.dismissAdvancedSettings()
+        viewModel.dismissSettings()
         assertTrue("Expected AlreadyConnected after save and dismiss, got ${viewModel.uiState.value}", viewModel.uiState.value is MainUiState.AlreadyConnected)
     }
 

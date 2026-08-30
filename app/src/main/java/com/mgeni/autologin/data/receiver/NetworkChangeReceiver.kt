@@ -23,10 +23,6 @@ class NetworkChangeReceiver : BroadcastReceiver() {
         AppLogger.i("NET_RECEIVER", "NetworkChangeReceiver triggered with action: $action")
 
         val prefs = PreferencesManager(context)
-        if (!prefs.enableBackgroundAutoLogin) {
-            AppLogger.d("NET_RECEIVER", "Background auto-login disabled; ignoring event.")
-            return
-        }
 
         if (!prefs.hasSavedCredentials()) {
             AppLogger.d("NET_RECEIVER", "No saved credentials found; skipping background worker.")
@@ -50,9 +46,10 @@ class NetworkChangeReceiver : BroadcastReceiver() {
 
             AppLogger.i("NET_RECEIVER", "Network state: isWifi=$isWifi, isCaptive=$isCaptive, isValidated=$isValidated")
 
-            // Only enqueue worker if the Wi-Fi network is explicitly identified as a captive portal
-            if (isWifi && isCaptive) {
-                AppLogger.i("NET_RECEIVER", "Captive portal detected on Wi-Fi ($network). Enqueuing Expedited AutoLoginWorker...")
+            // Enqueue worker on any Wi-Fi connection — the worker itself checks connectivity
+            // and exits immediately if internet is already working (no captive portal)
+            if (isWifi) {
+                AppLogger.i("NET_RECEIVER", "Wi-Fi connection detected ($network). Enqueuing AutoLoginWorker to check captive portal...")
                 val workRequest = OneTimeWorkRequestBuilder<AutoLoginWorker>()
                     .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                     .addTag(AutoLoginWorker.TAG)
@@ -64,7 +61,7 @@ class NetworkChangeReceiver : BroadcastReceiver() {
                     workRequest
                 )
             } else {
-                AppLogger.d("NET_RECEIVER", "Network is not a captive portal (isWifi=$isWifi, isCaptive=$isCaptive). Skipping worker.")
+                AppLogger.d("NET_RECEIVER", "Network is not Wi-Fi (isWifi=$isWifi). Skipping worker.")
             }
         }
     }

@@ -156,7 +156,7 @@ fun SecondaryActionButton(
 }
 
 @Composable
-fun AdvancedSettingsLink(
+fun SettingsLink(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -169,13 +169,13 @@ fun AdvancedSettingsLink(
     ) {
         Icon(
             imageVector = Icons.Outlined.Settings,
-            contentDescription = "Advanced settings",
+            contentDescription = "Settings",
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(16.dp)
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
-            text = "Advanced settings",
+            text = "Settings",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

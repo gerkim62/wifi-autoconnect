@@ -24,7 +24,6 @@ open class PreferencesManager(context: Context? = null) {
         private const val KEY_CHECK_INTERNET_ON_STARTUP = "check_internet_on_startup"
         private const val KEY_SKIP_INITIAL_CHECK = "skip_initial_check"
         private const val KEY_HAS_COMPLETED_ONBOARDING = "has_completed_onboarding"
-        private const val KEY_ENABLE_BACKGROUND_AUTO_LOGIN = "enable_background_auto_login"
         private const val KEY_ENABLE_BACKGROUND_NOTIFICATIONS = "enable_background_notifications"
         private const val KEY_LAST_BACKGROUND_LOGIN_TIME = "last_background_login_time"
     }
@@ -102,18 +101,6 @@ open class PreferencesManager(context: Context? = null) {
         get() = !checkInternetOnStartup
         set(value) {
             checkInternetOnStartup = !value
-        }
-
-    var enableBackgroundAutoLogin: Boolean
-        get() = prefs?.getBoolean(KEY_ENABLE_BACKGROUND_AUTO_LOGIN, true)
-            ?: (memoryStore[KEY_ENABLE_BACKGROUND_AUTO_LOGIN] as? Boolean ?: true)
-        set(value) {
-            val previous = enableBackgroundAutoLogin
-            prefs?.edit()?.putBoolean(KEY_ENABLE_BACKGROUND_AUTO_LOGIN, value)?.apply()
-            memoryStore[KEY_ENABLE_BACKGROUND_AUTO_LOGIN] = value
-            if (previous != value) {
-                AppLogger.i("PREFERENCES", "enableBackgroundAutoLogin changed: $previous -> $value")
-            }
         }
 
     var enableBackgroundNotifications: Boolean

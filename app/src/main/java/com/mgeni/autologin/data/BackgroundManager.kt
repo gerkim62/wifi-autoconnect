@@ -27,12 +27,6 @@ object BackgroundManager {
     }
 
     fun registerBackgroundNetworkCallback(context: Context) {
-        val prefs = PreferencesManager(context)
-        if (!prefs.enableBackgroundAutoLogin) {
-            AppLogger.d("BACKGROUND_MGR", "Background auto-login is disabled in preferences; skipping registration.")
-            return
-        }
-
         try {
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             if (cm == null) {
@@ -42,7 +36,6 @@ object BackgroundManager {
 
             val request = NetworkRequest.Builder()
                 .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build()
 
             val pendingIntent = getPendingIntent(context)
