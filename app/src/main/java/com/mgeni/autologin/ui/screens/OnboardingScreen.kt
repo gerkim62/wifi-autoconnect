@@ -24,15 +24,19 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.BatteryChargingFull
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.RocketLaunch
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -67,38 +71,37 @@ private data class OnboardingStep(
     val title: String,
     val description: String,
     val icon: ImageVector,
-    val isNotificationOptIn: Boolean = false,
-    val isBackgroundReliabilityTip: Boolean = false
+    val isPermissionsStep: Boolean = false
 )
 
 private val onboardingSteps = listOf(
     OnboardingStep(
         title = "The Problem",
-        description = "The \"guest\" Wi-Fi requires you to enter your username and password every time you reconnect.",
+        description = "The \"guest\" Wi-Fi requires you to enter your username and password every time.",
         icon = Icons.Outlined.Wifi
     ),
     OnboardingStep(
         title = "The Solution",
-        description = "Save your Wi-Fi credentials securely in this app. You only have to enter them once.",
+        description = "Save the Wi-Fi username and password securely in this app. Once and for all.",
         icon = Icons.Outlined.Lock
     ),
     OnboardingStep(
-        title = "Background Auto-Login",
-        description = "WifiAuto detects guest captive portals and logs in silently in the background—even if the app is closed.",
-        icon = Icons.Outlined.Autorenew,
-        isBackgroundReliabilityTip = true
+        title = "How It Works",
+        description = "Whenever you connect to the Wi-Fi, just open this app. It authenticates instantly.",
+        icon = Icons.Outlined.RocketLaunch
     ),
     OnboardingStep(
-        title = "Stay Informed",
-        description = "Would you like a brief notification whenever WifiAuto logs you in in the background?",
-        icon = Icons.Outlined.Notifications,
-        isNotificationOptIn = true
+        title = "Permissions",
+        description = "Optional settings for the best experience. You can change these anytime.",
+        icon = Icons.Outlined.Shield,
+        isPermissionsStep = true
     )
 )
 
 /**
  * Pure KISS Onboarding Screen.
- * Minimalist, classic mobile layout: Hero Icon + Title + Single clear paragraph + Optional Notification Opt-in.
+ * Minimalist, classic mobile layout:
+ * 1. The Problem -> 2. The Solution -> 3. How It Works -> 4. Permissions (Optional & KISS).
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -187,14 +190,15 @@ fun OnboardingScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 32.dp),
+                        .padding(horizontal = 28.dp)
+                        .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
                     // Big Clean Hero Icon
                     Box(
                         modifier = Modifier
-                            .size(100.dp)
+                            .size(92.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center
@@ -203,11 +207,11 @@ fun OnboardingScreen(
                             imageVector = step.icon,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(52.dp)
+                            modifier = Modifier.size(48.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(28.dp))
 
                     // Title
                     Text(
@@ -221,7 +225,7 @@ fun OnboardingScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     // Description
                     Text(
@@ -234,112 +238,158 @@ fun OnboardingScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    if (step.isBackgroundReliabilityTip) {
-                        val context = LocalContext.current
-                        val oemVendor = remember { OemBatteryHelper.getOemVendor() }
-                        val oemTip = remember { OemBatteryHelper.getOemSpecificTip() }
-                        var isExempt by remember { mutableStateOf(OemBatteryHelper.isIgnoringBatteryOptimizations(context)) }
+                    // Step 4: Permissions List (KISS)
+                    if (step.isPermissionsStep) {
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                        if (oemTip != null || !isExempt) {
-                            Spacer(modifier = Modifier.height(20.dp))
+                        val context = LocalContext.current
+                        var isBatteryExempt by remember {
+                            mutableStateOf(OemBatteryHelper.isIgnoringBatteryOptimizations(context))
+                        }
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // 1. Notification Toggle
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .clickable { wantsNotifications = !wantsNotifications },
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Notifications,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(14.dp))
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Login notifications",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontSize = 14.5.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            ),
+                                            color = MaterialTheme.colorScheme.onBackground
+                                        )
+                                        Text(
+                                            text = "Brief alert when auto-login succeeds",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    Switch(
+                                        checked = wantsNotifications,
+                                        onCheckedChange = { wantsNotifications = it },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                            checkedTrackColor = MaterialTheme.colorScheme.primary
+                                        )
+                                    )
+                                }
+                            }
+
+                            // 2. Battery / Background Reliability Permission
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(16.dp))
                                     .clickable {
                                         OemBatteryHelper.openBatteryOptimizationSettings(context)
-                                        isExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
+                                        isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
                                     },
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                                 shape = RoundedCornerShape(16.dp)
                             ) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.BatteryChargingFull,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.BatteryChargingFull,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(14.dp))
+
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = if (oemVendor != OemBatteryHelper.OemVendor.GENERIC) {
-                                                "${oemVendor.displayName} Setup"
-                                            } else {
-                                                "Background Reliability"
-                                            },
+                                            text = "Unrestricted battery",
                                             style = MaterialTheme.typography.titleMedium.copy(
-                                                fontSize = 14.sp,
+                                                fontSize = 14.5.sp,
                                                 fontWeight = FontWeight.SemiBold
                                             ),
                                             color = MaterialTheme.colorScheme.onBackground
                                         )
                                         Text(
-                                            text = oemTip ?: "Allow background activity so your phone doesn't freeze the login worker.",
-                                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                                            text = "Keeps background auto-login reliable",
+                                            style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
+
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = if (isExempt) "Done" else "Allow",
-                                        style = MaterialTheme.typography.labelMedium.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
+
+                                    if (isBatteryExempt) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.CheckCircle,
+                                                contentDescription = "Allowed",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "Allowed",
+                                                style = MaterialTheme.typography.labelMedium.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            )
+                                        }
+                                    } else {
+                                        Text(
+                                            text = "Enable",
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
                                         )
-                                    )
+                                    }
                                 }
-                            }
-                        }
-                    }
-
-                    if (step.isNotificationOptIn) {
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .clickable { wantsNotifications = !wantsNotifications },
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Notify me on login",
-                                        style = MaterialTheme.typography.titleMedium.copy(
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        ),
-                                        color = MaterialTheme.colorScheme.onBackground
-                                    )
-                                    Text(
-                                        text = "Subtle alert when Wi-Fi connects. No spam or ongoing icons.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Switch(
-                                    checked = wantsNotifications,
-                                    onCheckedChange = { wantsNotifications = it },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                                        checkedTrackColor = MaterialTheme.colorScheme.primary
-                                    )
-                                )
                             }
                         }
                     }
