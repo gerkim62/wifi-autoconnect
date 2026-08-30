@@ -256,7 +256,7 @@ fun OnboardingScreen(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
-                                text = "Effortless automatic sign-in for guest Wi-Fi.",
+                                text = "Effortless automatic sign-in for the \"guest\" Wi-Fi.",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center
