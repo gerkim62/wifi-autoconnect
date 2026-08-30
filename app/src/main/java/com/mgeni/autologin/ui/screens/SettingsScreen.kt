@@ -32,7 +32,6 @@ import androidx.compose.material.icons.outlined.PersonOff
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.Web
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -134,9 +133,6 @@ fun SettingsScreen(
         }
     }
 
-    val oemTip = remember { OemBatteryHelper.getOemSpecificTip() }
-    val oemVendor = remember { OemBatteryHelper.getOemVendor() }
-
     if (showClearCredsDialog) {
         ConfirmationDialog(
             title = "Clear saved credentials?",
@@ -217,15 +213,14 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 24.dp, vertical = 12.dp)
-                .verticalScroll(scrollState),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .verticalScroll(scrollState)
         ) {
             // Success Feedback Banner
             if (!successMessage.isNullOrBlank()) {
                 StatusBanner(
                     type = BannerType.Success,
                     message = successMessage,
-                    modifier = Modifier.padding(bottom = 2.dp)
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
             }
 
@@ -234,256 +229,232 @@ fun SettingsScreen(
                 StatusBanner(
                     type = BannerType.Error,
                     message = errorMessage,
-                    modifier = Modifier.padding(bottom = 2.dp)
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
             }
 
-            // ==================== SECTION 1: MAIN PREFERENCES ====================
-
-            // 1. Background Notifications Option (Instant save)
-            Box(
+            // ==================== SECTION 1: GENERAL ====================
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                    .padding(top = 4.dp, bottom = 8.dp)
+            ) {
+                Text(
+                    text = "General",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                HorizontalDivider(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                )
+            }
+
+            // 1. Background Notifications Option (Flat row)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
                     .clickable {
                         val newValue = !enableBackgroundNotifications
                         enableBackgroundNotifications = newValue
                         onToggleNotifications(newValue)
                     }
-                    .padding(14.dp)
+                    .padding(vertical = 10.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Notifications,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Background notifications",
-                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        Text(
-                            text = "Brief status alert when background sign-in completes.",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Switch(
-                        checked = enableBackgroundNotifications,
-                        onCheckedChange = { newValue ->
-                            enableBackgroundNotifications = newValue
-                            onToggleNotifications(newValue)
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary
-                        )
+                        modifier = Modifier.size(21.dp)
                     )
                 }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Background notifications",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "Get a notification after auto sign-in",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(
+                    checked = enableBackgroundNotifications,
+                    onCheckedChange = { newValue ->
+                        enableBackgroundNotifications = newValue
+                        onToggleNotifications(newValue)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary
+                    )
+                )
             }
 
-            // 2. Keep app running (Battery Optimization & Background Reliability)
-            Box(
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+            )
+
+            // 2. Keep app running (Simplified Flat row matching onboarding Step 2)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
-                    .padding(14.dp)
+                    .then(
+                        if (!isBatteryExempt) {
+                            Modifier.clickable {
+                                OemBatteryHelper.openBatteryOptimizationSettings(context)
+                                isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
+                            }
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .padding(vertical = 10.dp)
             ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.BatteryChargingFull,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.BatteryChargingFull,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(21.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Keep app running",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "Let the app run in background so it can sign you in automatically",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                if (!isBatteryExempt) {
+                    Text(
+                        text = "Allow",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Keep app running",
-                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                            Text(
-                                text = "Let this app stay active in the background so it can sign you in automatically.",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Status Pill
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (isBatteryExempt) {
-                                EmeraldContainer.copy(alpha = 0.7f)
-                            } else {
-                                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
-                            }
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (isBatteryExempt) Icons.Outlined.CheckCircle else Icons.Outlined.WarningAmber,
-                                    contentDescription = null,
-                                    tint = if (isBatteryExempt) EmeraldPrimary else MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = if (isBatteryExempt) "Unrestricted" else "Optimized",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    ),
-                                    color = if (isBatteryExempt) EmeraldPrimary else MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
-                    }
-
-                    // OEM Specific Advice Banner if applicable
-                    if (oemTip != null) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
-                                .padding(horizontal = 10.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                text = oemTip,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 11.5.sp,
-                                    lineHeight = 16.sp
-                                ),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Action Buttons Row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    )
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = EmeraldContainer.copy(alpha = 0.7f)
                     ) {
-                        // Primary Configure / Allow Button
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
-                                .clickable {
-                                    OemBatteryHelper.openBatteryOptimizationSettings(context)
-                                    isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
-                                }
-                                .padding(vertical = 9.dp, horizontal = 10.dp),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                         ) {
-                            Text(
-                                text = if (oemVendor != OemBatteryHelper.OemVendor.GENERIC) {
-                                    "Configure ${oemVendor.displayName}"
-                                } else {
-                                    if (isBatteryExempt) "Battery settings" else "Allow background activity"
-                                },
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 12.5.sp
-                                ),
-                                color = MaterialTheme.colorScheme.primary
+                            Icon(
+                                imageVector = Icons.Outlined.CheckCircle,
+                                contentDescription = null,
+                                tint = EmeraldPrimary,
+                                modifier = Modifier.size(12.dp)
                             )
-                        }
-
-                        // Optional DontKillMyApp link if known OEM
-                        if (oemVendor != OemBatteryHelper.OemVendor.GENERIC) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                                    .clickable {
-                                        OemBatteryHelper.openDontKillMyAppGuide(context)
-                                    }
-                                    .padding(vertical = 9.dp, horizontal = 12.dp),
-                                    contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Guide",
-                                    style = MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = FontWeight.Medium,
-                                        fontSize = 12.5.sp
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = "Allowed",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = EmeraldPrimary
+                            )
                         }
                     }
                 }
             }
 
-            // 3. Clear Saved Credentials Card
-            Box(
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+            )
+
+            // 3. Clear Saved Credentials (Flat row)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
                     .clickable(enabled = hasSavedCredentials) { showClearCredsDialog = true }
-                    .padding(14.dp)
+                    .padding(vertical = 10.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (hasSavedCredentials) MaterialTheme.colorScheme.error.copy(alpha = 0.12f)
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.PersonOff,
                         contentDescription = null,
                         tint = if (hasSavedCredentials) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(21.dp)
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Clear saved credentials",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontSize = 15.sp,
-                                color = if (hasSavedCredentials) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Clear saved credentials",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (hasSavedCredentials) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
-                        Text(
-                            text = if (hasSavedCredentials) "Remove saved credentials from device." else "No credentials stored.",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (hasSavedCredentials) 1f else 0.5f),
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
+                    )
+                    Text(
+                        text = if (hasSavedCredentials) "Remove saved credentials from device." else "No credentials stored.",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (hasSavedCredentials) 1f else 0.5f)
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             // ==================== SECTION 2: ADVANCED OPTIONS ====================
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
             ) {
                 Text(
                     text = "Advanced",
@@ -500,7 +471,7 @@ fun SettingsScreen(
                 )
             }
 
-            // 4. Portal URL Field with inline Save/Discard
+            // 4. Portal URL Field (Card treatment with placeholder, no duplicate label)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -511,12 +482,15 @@ fun SettingsScreen(
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = "Portal URL",
-                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
                         text = "Captive portal address for the \"guest\" Wi-Fi network.",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
                     )
@@ -524,7 +498,7 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = portalUrl,
                         onValueChange = { portalUrl = it },
-                        label = { Text("Portal URL") },
+                        placeholder = { Text("https://...") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Outlined.Web,
@@ -624,59 +598,67 @@ fun SettingsScreen(
                 }
             }
 
-            // 5. Check Internet Connectivity on Startup Option (Instant save)
-            Box(
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 5. Check Internet Connectivity on Startup Option (Flat row)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
                     .clickable {
                         val newValue = !checkInternetOnStartup
                         checkInternetOnStartup = newValue
                         onToggleCheckInternet(newValue)
                     }
-                    .padding(14.dp)
+                    .padding(vertical = 10.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Speed,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Check internet on startup",
-                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        Text(
-                            text = "Verify connectivity before opening the portal.",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Switch(
-                        checked = checkInternetOnStartup,
-                        onCheckedChange = { newValue ->
-                            checkInternetOnStartup = newValue
-                            onToggleCheckInternet(newValue)
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary
-                        )
+                        modifier = Modifier.size(21.dp)
                     )
                 }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Check internet on startup",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "Verify connectivity before opening the portal.",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(
+                    checked = checkInternetOnStartup,
+                    onCheckedChange = { newValue ->
+                        checkInternetOnStartup = newValue
+                        onToggleCheckInternet(newValue)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary
+                    )
+                )
             }
 
-            // 6. Diagnostic Logs Section
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 6. Diagnostic Logs Section (Card)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -689,24 +671,34 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.InsertDriveFile,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.InsertDriveFile,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(21.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Diagnostic Logs",
-                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                ),
                                 color = MaterialTheme.colorScheme.onBackground
                             )
                             Text(
                                 text = "Captures portal HTTP requests, responses & errors ($logCount events).",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 2.dp)
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -778,7 +770,7 @@ fun SettingsScreen(
             }
 
             // 7. Reset to Default Button
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(18.dp))
             SecondaryActionButton(
                 text = "Reset all settings to default",
                 onClick = { showResetDialog = true },

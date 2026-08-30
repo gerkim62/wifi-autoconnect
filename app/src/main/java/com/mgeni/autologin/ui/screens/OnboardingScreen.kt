@@ -82,18 +82,18 @@ private data class WelcomeItem(
 
 private val welcomeItems = listOf(
     WelcomeItem(
-        title = "The Problem",
+        title = "Annoying, right?",
         description = "The \"guest\" Wi-Fi requires you to enter your username and password every time.",
         icon = Icons.Outlined.Wifi
     ),
     WelcomeItem(
-        title = "The Solution",
+        title = "Set it & forget it",
         description = "Save the Wi-Fi username and password securely in this app. Once and for all.",
         icon = Icons.Outlined.Lock
     ),
     WelcomeItem(
-        title = "How It Works",
-        description = "Whenever you connect to the Wi-Fi, just open this app. It authenticates instantly.",
+        title = "Automatic",
+        description = "Works in the background, or just tap to sign in.",
         icon = Icons.Outlined.RocketLaunch
     )
 )
@@ -102,7 +102,7 @@ private const val TOTAL_PAGES = 2
 
 /**
  * 2-Page Onboarding Screen.
- * Page 1: Welcome (The Problem, The Solution, How It Works - compact, no-scroll cards).
+ * Page 1: Welcome (Annoying, right?, Set it & forget it, Automatic - spacious, polished cards).
  * Page 2: Permissions (Login notifications toggle + Keep app running background fix).
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -228,7 +228,7 @@ fun OnboardingScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(72.dp)
+                                    .size(84.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.primaryContainer),
                                 contentAlignment = Alignment.Center
@@ -237,23 +237,23 @@ fun OnboardingScreen(
                                     imageVector = Icons.Outlined.Wifi,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(38.dp)
+                                    modifier = Modifier.size(42.dp)
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(18.dp))
 
                             Text(
                                 text = "Welcome to WifiAuto",
                                 style = MaterialTheme.typography.headlineSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 22.sp
+                                    fontSize = 24.sp
                                 ),
                                 color = MaterialTheme.colorScheme.onBackground,
                                 textAlign = TextAlign.Center
                             )
 
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
                                 text = "Effortless automatic sign-in for guest Wi-Fi.",
@@ -262,12 +262,12 @@ fun OnboardingScreen(
                                 textAlign = TextAlign.Center
                             )
 
-                            Spacer(modifier = Modifier.height(20.dp))
+                            Spacer(modifier = Modifier.height(28.dp))
 
-                            // 3 Compact Cards
+                            // 3 Spacious Cards
                             Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
                                 welcomeItems.forEach { item ->
                                     Surface(
@@ -278,12 +278,12 @@ fun OnboardingScreen(
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                                                .padding(horizontal = 16.dp, vertical = 14.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Box(
                                                 modifier = Modifier
-                                                    .size(36.dp)
+                                                    .size(40.dp)
                                                     .clip(CircleShape)
                                                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
                                                 contentAlignment = Alignment.Center
@@ -292,17 +292,17 @@ fun OnboardingScreen(
                                                     imageVector = item.icon,
                                                     contentDescription = null,
                                                     tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(19.dp)
+                                                    modifier = Modifier.size(21.dp)
                                                 )
                                             }
 
-                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Spacer(modifier = Modifier.width(14.dp))
 
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(
                                                     text = item.title,
                                                     style = MaterialTheme.typography.titleMedium.copy(
-                                                        fontSize = 14.sp,
+                                                        fontSize = 14.5.sp,
                                                         fontWeight = FontWeight.SemiBold
                                                     ),
                                                     color = MaterialTheme.colorScheme.onBackground
@@ -324,7 +324,7 @@ fun OnboardingScreen(
                     }
 
                     1 -> {
-                        // Page 2: Permissions & Background Reliability
+                        // Page 2: Optional permissions & Background Reliability
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -335,7 +335,7 @@ fun OnboardingScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(72.dp)
+                                    .size(84.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.primaryContainer),
                                 contentAlignment = Alignment.Center
@@ -344,23 +344,23 @@ fun OnboardingScreen(
                                     imageVector = Icons.Outlined.Shield,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(38.dp)
+                                    modifier = Modifier.size(42.dp)
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(18.dp))
 
                             Text(
-                                text = "Permissions & Reliability",
+                                text = "Optional permissions",
                                 style = MaterialTheme.typography.headlineSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 22.sp
+                                    fontSize = 24.sp
                                 ),
                                 color = MaterialTheme.colorScheme.onBackground,
                                 textAlign = TextAlign.Center
                             )
 
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
                                 text = "Optional settings for seamless auto-login. You can adjust these anytime in Settings.",
@@ -369,11 +369,11 @@ fun OnboardingScreen(
                                 textAlign = TextAlign.Center
                             )
 
-                            Spacer(modifier = Modifier.height(20.dp))
+                            Spacer(modifier = Modifier.height(28.dp))
 
                             Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
                                 // 1. Notification Toggle
                                 Surface(
@@ -387,12 +387,12 @@ fun OnboardingScreen(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                                            .padding(horizontal = 16.dp, vertical = 14.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Box(
                                             modifier = Modifier
-                                                .size(36.dp)
+                                                .size(40.dp)
                                                 .clip(CircleShape)
                                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
                                             contentAlignment = Alignment.Center
@@ -401,23 +401,23 @@ fun OnboardingScreen(
                                                 imageVector = Icons.Outlined.Notifications,
                                                 contentDescription = null,
                                                 tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(19.dp)
+                                                modifier = Modifier.size(21.dp)
                                             )
                                         }
 
-                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Spacer(modifier = Modifier.width(14.dp))
 
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = "Login notifications",
                                                 style = MaterialTheme.typography.titleMedium.copy(
-                                                    fontSize = 14.sp,
+                                                    fontSize = 14.5.sp,
                                                     fontWeight = FontWeight.SemiBold
                                                 ),
                                                 color = MaterialTheme.colorScheme.onBackground
                                             )
                                             Text(
-                                                text = "Brief alert when auto-login succeeds",
+                                                text = "Get a notification after auto sign-in",
                                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
@@ -455,12 +455,12 @@ fun OnboardingScreen(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                                            .padding(horizontal = 16.dp, vertical = 14.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Box(
                                             modifier = Modifier
-                                                .size(36.dp)
+                                                .size(40.dp)
                                                 .clip(CircleShape)
                                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
                                             contentAlignment = Alignment.Center
@@ -469,23 +469,23 @@ fun OnboardingScreen(
                                                 imageVector = Icons.Outlined.BatteryChargingFull,
                                                 contentDescription = null,
                                                 tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(19.dp)
+                                                modifier = Modifier.size(21.dp)
                                             )
                                         }
 
-                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Spacer(modifier = Modifier.width(14.dp))
 
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = "Keep app running",
                                                 style = MaterialTheme.typography.titleMedium.copy(
-                                                    fontSize = 14.sp,
+                                                    fontSize = 14.5.sp,
                                                     fontWeight = FontWeight.SemiBold
                                                 ),
                                                 color = MaterialTheme.colorScheme.onBackground
                                             )
                                             Text(
-                                                text = "Let this app stay active in the background so it can sign you in automatically.",
+                                                text = "Let the app run in background so it can sign you in automatically",
                                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
