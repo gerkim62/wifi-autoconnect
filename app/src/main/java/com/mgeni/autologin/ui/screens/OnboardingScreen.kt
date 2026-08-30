@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.mgeni.autologin.data.AppLogger
 import com.mgeni.autologin.data.OemBatteryHelper
 import com.mgeni.autologin.ui.theme.EmeraldContainer
 import com.mgeni.autologin.ui.theme.EmeraldPrimary
@@ -436,14 +437,19 @@ fun OnboardingScreen(
                                 }
 
                                 // 2. Keep app running (Battery optimization exemption)
+                                val handleBatteryClick = {
+                                    AppLogger.i("ONBOARDING_UI", "Battery optimization option tapped in onboarding (currently exempt=$isBatteryExempt)")
+                                    val launched = OemBatteryHelper.openBatteryOptimizationSettings(context)
+                                    if (!launched) {
+                                        AppLogger.w("ONBOARDING_UI", "Failed to launch battery optimization settings from OnboardingScreen.")
+                                    }
+                                }
+
                                 Surface(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(14.dp))
-                                        .clickable {
-                                            OemBatteryHelper.openBatteryOptimizationSettings(context)
-                                            isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
-                                        },
+                                        .clickable { handleBatteryClick() },
                                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                                     shape = RoundedCornerShape(14.dp)
                                 ) {
@@ -480,7 +486,8 @@ fun OnboardingScreen(
                                                 color = MaterialTheme.colorScheme.onBackground
                                             )
                                             Text(
-                                                text = "Let the app run in background so it can sign you in automatically",
+                                                text = if (isBatteryExempt) "Unrestricted — signs in automatically in the background"
+                                                       else "Let the app run in background so it can sign you in automatically",
                                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
@@ -490,10 +497,7 @@ fun OnboardingScreen(
 
                                         Switch(
                                             checked = isBatteryExempt,
-                                            onCheckedChange = {
-                                                OemBatteryHelper.openBatteryOptimizationSettings(context)
-                                                isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
-                                            },
+                                            onCheckedChange = { handleBatteryClick() },
                                             colors = SwitchDefaults.colors(
                                                 checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                                                 checkedTrackColor = MaterialTheme.colorScheme.primary

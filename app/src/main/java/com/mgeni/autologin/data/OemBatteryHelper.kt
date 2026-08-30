@@ -103,18 +103,67 @@ object OemBatteryHelper {
     }
 
     /**
-     * Executes a safe, 3-stage fallback navigation to open the device's battery optimization
-     * or autostart management screen:
+     * Directly opens the Application Details screen in Android Settings for this app.
+     * This is where users on modern Android (12+) can manually toggle between
+     * 'Unrestricted', 'Optimized', and 'Restricted' battery usage modes.
+     */
+    fun openAppDetailsSettings(context: Context): Boolean {
+        val packageName = context.packageName
+        return try {
+            val appDetailsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", packageName, null)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(appDetailsIntent)
+            AppLogger.i("OEM_BATTERY", "Launched ACTION_APPLICATION_DETAILS_SETTINGS for $packageName")
+            true
+        } catch (e: Exception) {
+            AppLogger.e("OEM_BATTERY", "Failed to launch ACTION_APPLICATION_DETAILS_SETTINGS: ${e.localizedMessage}", e)
+            false
+        }
+    }
+
+    /**
+     * Executes safe, prioritized navigation to configure background battery optimization:
      *
-     * 1. Stage 1: Vendor-specific Autostart / Battery Management activities
-     * 2. Stage 2: Standard AOSP Battery Optimization Request (Direct dialog or general list)
-     * 3. Stage 3: App Details Settings fallback
+     * 1. If already exempt: Navigates to App Details Settings where the user can inspect or change restrictions.
+     * 2. If not exempt:
+     *    - Stage 1: Standard AOSP Direct Request dialog (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+     *    - Stage 2: Vendor-specific Autostart / Battery Management activities
+     *    - Stage 3: Standard AOSP Battery Optimization List (ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+     *    - Stage 4: App Details Settings fallback
      */
     fun openBatteryOptimizationSettings(context: Context): Boolean {
         val manufacturer = Build.MANUFACTURER.lowercase()
         val packageName = context.packageName
+        val isAlreadyExempt = isIgnoringBatteryOptimizations(context)
 
-        // Stage 1: OEM-Specific Autostart / Battery Management Activities
+        // Case 1: App is ALREADY exempt.
+        // Android's ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS is a no-op when already whitelisted.
+        // Direct the user to App Details Settings where battery usage profiles can be adjusted.
+        if (isAlreadyExempt) {
+            AppLogger.i("OEM_BATTERY", "App is already exempt from battery optimization. Directing to App Details Settings to allow adjustments.")
+            return openAppDetailsSettings(context)
+        }
+
+        AppLogger.i("OEM_BATTERY", "App is not exempt. Initiating battery optimization exemption flow for package: $packageName (Manufacturer: $manufacturer)")
+
+        // Stage 1: Standard AOSP Direct Request Dialog
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                val directRequestIntent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:$packageName")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(directRequestIntent)
+                AppLogger.i("OEM_BATTERY", "Successfully launched direct ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS for $packageName")
+                return true
+            } catch (e: Exception) {
+                AppLogger.w("OEM_BATTERY", "Direct ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS failed: ${e.localizedMessage}", e)
+            }
+        }
+
+        // Stage 2: OEM-Specific Autostart / Battery Management Activities
         val oemIntents = when {
             // Xiaomi / Redmi / POCO
             manufacturer.contains("xiaomi") || manufacturer.contains("redmi") || manufacturer.contains("poco") -> listOf(
@@ -169,45 +218,26 @@ object OemBatteryHelper {
                 context.startActivity(intent)
                 AppLogger.i("OEM_BATTERY", "Launched OEM-specific battery/autostart settings: $intent")
                 return true
-            } catch (_: Exception) {
-                // Try next OEM intent candidate
+            } catch (e: Exception) {
+                AppLogger.d("OEM_BATTERY", "OEM intent candidate not available ($intent): ${e.localizedMessage}")
             }
         }
 
-        // Stage 2: Standard AOSP Direct Request or Settings List
+        // Stage 3: General AOSP Battery Optimization Settings List Fallback
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             try {
-                val directRequestIntent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                    data = Uri.parse("package:$packageName")
+                val fallbackList = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
-                context.startActivity(directRequestIntent)
-                AppLogger.i("OEM_BATTERY", "Launched ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS for $packageName")
+                context.startActivity(fallbackList)
+                AppLogger.i("OEM_BATTERY", "Launched ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS fallback list")
                 return true
-            } catch (_: Exception) {
-                try {
-                    val fallbackList = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    context.startActivity(fallbackList)
-                    AppLogger.i("OEM_BATTERY", "Launched ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS fallback")
-                    return true
-                } catch (_: Exception) {}
+            } catch (e: Exception) {
+                AppLogger.w("OEM_BATTERY", "ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS fallback failed: ${e.localizedMessage}", e)
             }
         }
 
-        // Stage 3: App Details Settings Fallback
-        return try {
-            val appDetailsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                data = Uri.fromParts("package", packageName, null)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            context.startActivity(appDetailsIntent)
-            AppLogger.i("OEM_BATTERY", "Launched ACTION_APPLICATION_DETAILS_SETTINGS fallback")
-            true
-        } catch (e: Exception) {
-            AppLogger.e("OEM_BATTERY", "Failed all battery settings launch stages: ${e.localizedMessage}", e)
-            false
-        }
+        // Stage 4: App Details Settings Fallback
+        return openAppDetailsSettings(context)
     }
 }

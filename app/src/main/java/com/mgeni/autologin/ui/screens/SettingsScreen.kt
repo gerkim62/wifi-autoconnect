@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.mgeni.autologin.data.AppLogger
 import com.mgeni.autologin.data.OemBatteryHelper
 import com.mgeni.autologin.data.PreferencesManager
 import com.mgeni.autologin.ui.components.BannerType
@@ -109,6 +110,7 @@ fun SettingsScreen(
     var showClearCredsDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showClearLogsDialog by remember { mutableStateOf(false) }
+    var showBatteryManageDialog by remember { mutableStateOf(false) }
 
     val isPortalUrlDirty = portalUrl.trim() != currentPortalUrl.trim()
 
@@ -178,6 +180,22 @@ fun SettingsScreen(
                 onClearLogsClick()
             },
             onDismiss = { showClearLogsDialog = false }
+        )
+    }
+
+    if (showBatteryManageDialog) {
+        ConfirmationDialog(
+            title = "Background Running is Active",
+            message = "WifiAuto is already exempted from battery optimization and running unrestricted.\n\nTo restore battery limits, select 'Optimized' or 'Restricted' in Android App Info Settings.",
+            confirmButtonText = "Open App Settings",
+            isDestructive = false,
+            icon = Icons.Outlined.BatteryChargingFull,
+            onConfirm = {
+                showBatteryManageDialog = false
+                AppLogger.i("SETTINGS_UI", "User confirmed opening App Details Settings from battery management dialog.")
+                OemBatteryHelper.openAppDetailsSettings(context)
+            },
+            onDismiss = { showBatteryManageDialog = false }
         )
     }
 
@@ -315,15 +333,24 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
             )
 
-            // 2. Keep app running (Simplified Flat row with Switch toggle)
+            // 2. Keep app running (Background reliability configuration)
+            val handleBatteryClick = {
+                AppLogger.i("SETTINGS_UI", "Battery optimization option tapped (currently exempt=$isBatteryExempt)")
+                if (isBatteryExempt) {
+                    showBatteryManageDialog = true
+                } else {
+                    val launched = OemBatteryHelper.openBatteryOptimizationSettings(context)
+                    if (!launched) {
+                        AppLogger.w("SETTINGS_UI", "Failed to launch battery optimization settings from SettingsScreen.")
+                    }
+                }
+            }
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {
-                        OemBatteryHelper.openBatteryOptimizationSettings(context)
-                        isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
-                    }
+                    .clickable { handleBatteryClick() }
                     .padding(vertical = 10.dp)
             ) {
                 Box(
@@ -351,7 +378,8 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
-                        text = "Let the app run in background so it can sign you in automatically",
+                        text = if (isBatteryExempt) "Unrestricted — signs in automatically in the background"
+                               else "Let the app run in background so it can sign you in automatically",
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -359,10 +387,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Switch(
                     checked = isBatteryExempt,
-                    onCheckedChange = {
-                        OemBatteryHelper.openBatteryOptimizationSettings(context)
-                        isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
-                    },
+                    onCheckedChange = { handleBatteryClick() },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                         checkedTrackColor = MaterialTheme.colorScheme.primary

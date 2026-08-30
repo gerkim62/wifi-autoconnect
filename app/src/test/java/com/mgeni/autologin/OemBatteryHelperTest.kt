@@ -60,4 +60,14 @@ class OemBatteryHelperTest {
         assertEquals("https://dontkillmyapp.com/oneplus?app=WifiAuto", OemBatteryHelper.getDontKillMyAppUrl("OnePlus"))
         assertEquals("https://dontkillmyapp.com?app=WifiAuto", OemBatteryHelper.getDontKillMyAppUrl("Google"))
     }
+
+    @Test
+    fun `OemBatteryHelper vendor enums have valid display names and slugs`() {
+        for (vendor in OemBatteryHelper.OemVendor.values()) {
+            assertTrue(vendor.displayName.isNotBlank())
+            if (vendor != OemBatteryHelper.OemVendor.GENERIC) {
+                assertTrue(vendor.dkmSlug.isNotBlank())
+            }
+        }
+    }
 }
