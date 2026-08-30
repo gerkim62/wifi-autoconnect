@@ -105,6 +105,7 @@ fun MgeniApp(
                     }
 
                     OnboardingScreen(
+                        initialEnableNotifications = state.initialEnableNotifications,
                         onComplete = { enableNotifications ->
                             viewModel.completeOnboarding(enableNotifications)
                             BackgroundManager.registerBackgroundNetworkCallback(context)

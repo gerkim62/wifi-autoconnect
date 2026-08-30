@@ -754,7 +754,10 @@ class MainViewModel(
         val current = _uiState.value
         if (current !is MainUiState.Onboarding) {
             AppLogger.i("VIEW_MODEL", "Opening Onboarding / App Guide screen.")
-            _uiState.value = MainUiState.Onboarding(previousState = current)
+            _uiState.value = MainUiState.Onboarding(
+                previousState = current,
+                initialEnableNotifications = preferencesManager.enableBackgroundNotifications
+            )
         }
     }
 

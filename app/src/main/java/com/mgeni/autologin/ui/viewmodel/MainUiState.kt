@@ -61,6 +61,7 @@ sealed interface MainUiState {
 
     // 10. Interactive Onboarding / App Guide screen
     data class Onboarding(
-        val previousState: MainUiState? = null
+        val previousState: MainUiState? = null,
+        val initialEnableNotifications: Boolean = false
     ) : MainUiState
 }

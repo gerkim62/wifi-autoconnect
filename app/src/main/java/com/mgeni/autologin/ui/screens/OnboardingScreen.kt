@@ -4,6 +4,7 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import android.content.pm.PackageManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -50,6 +51,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,10 +62,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.mgeni.autologin.data.OemBatteryHelper
 import kotlinx.coroutines.launch
 
@@ -108,28 +114,56 @@ private val onboardingSteps = listOf(
 fun OnboardingScreen(
     onComplete: (enableNotifications: Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    initialEnableNotifications: Boolean = false,
     isDismissable: Boolean = false,
     onDismiss: () -> Unit = { onComplete(false) }
 ) {
+    val context = LocalContext.current
     val pagerState = rememberPagerState(pageCount = { onboardingSteps.size })
     val coroutineScope = rememberCoroutineScope()
     val isLastPage = pagerState.currentPage == onboardingSteps.size - 1
 
-    var wantsNotifications by remember { mutableStateOf(false) }
+    var wantsNotifications by remember(initialEnableNotifications) { mutableStateOf(initialEnableNotifications) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         wantsNotifications = isGranted
-        onComplete(isGranted)
+    }
+
+    val toggleNotifications: () -> Unit = {
+        if (!wantsNotifications) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                wantsNotifications = true
+            }
+        } else {
+            wantsNotifications = false
+        }
+    }
+
+    var isBatteryExempt by remember {
+        mutableStateOf(OemBatteryHelper.isIgnoringBatteryOptimizations(context))
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     val handleCompletion: () -> Unit = {
-        if (wantsNotifications && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            onComplete(wantsNotifications)
-        }
+        onComplete(wantsNotifications)
     }
 
     Surface(
@@ -242,11 +276,6 @@ fun OnboardingScreen(
                     if (step.isPermissionsStep) {
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        val context = LocalContext.current
-                        var isBatteryExempt by remember {
-                            mutableStateOf(OemBatteryHelper.isIgnoringBatteryOptimizations(context))
-                        }
-
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -256,7 +285,7 @@ fun OnboardingScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(16.dp))
-                                    .clickable { wantsNotifications = !wantsNotifications },
+                                    .clickable { toggleNotifications() },
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                                 shape = RoundedCornerShape(16.dp)
                             ) {
@@ -301,7 +330,7 @@ fun OnboardingScreen(
 
                                     Switch(
                                         checked = wantsNotifications,
-                                        onCheckedChange = { wantsNotifications = it },
+                                        onCheckedChange = { toggleNotifications() },
                                         colors = SwitchDefaults.colors(
                                             checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                                             checkedTrackColor = MaterialTheme.colorScheme.primary
@@ -310,79 +339,62 @@ fun OnboardingScreen(
                                 }
                             }
 
-                            // 2. Battery / Background Reliability Permission
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .clickable {
-                                        OemBatteryHelper.openBatteryOptimizationSettings(context)
-                                        isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
-                                    },
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
-                                Row(
+                            // 2. Battery / Background Reliability Button (shown ONLY if not already fixed)
+                            if (!isBatteryExempt) {
+                                Surface(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .clickable {
+                                            OemBatteryHelper.openBatteryOptimizationSettings(context)
+                                            isBatteryExempt = OemBatteryHelper.isIgnoringBatteryOptimizations(context)
+                                        },
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                    shape = RoundedCornerShape(16.dp)
                                 ) {
-                                    Box(
+                                    Row(
                                         modifier = Modifier
-                                            .size(38.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                                        contentAlignment = Alignment.Center
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.BatteryChargingFull,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.width(14.dp))
-
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = "Unrestricted battery",
-                                            style = MaterialTheme.typography.titleMedium.copy(
-                                                fontSize = 14.5.sp,
-                                                fontWeight = FontWeight.SemiBold
-                                            ),
-                                            color = MaterialTheme.colorScheme.onBackground
-                                        )
-                                        Text(
-                                            text = "Keeps background auto-login reliable",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    if (isBatteryExempt) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(38.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
                                             Icon(
-                                                imageVector = Icons.Outlined.CheckCircle,
-                                                contentDescription = "Allowed",
+                                                imageVector = Icons.Outlined.BatteryChargingFull,
+                                                contentDescription = null,
                                                 tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(
-                                                text = "Allowed",
-                                                style = MaterialTheme.typography.labelMedium.copy(
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
+                                                modifier = Modifier.size(20.dp)
                                             )
                                         }
-                                    } else {
+
+                                        Spacer(modifier = Modifier.width(14.dp))
+
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Unrestricted battery",
+                                                style = MaterialTheme.typography.titleMedium.copy(
+                                                    fontSize = 14.5.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                ),
+                                                color = MaterialTheme.colorScheme.onBackground
+                                            )
+                                            Text(
+                                                text = "Keeps background auto-login reliable",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.width(8.dp))
+
                                         Text(
-                                            text = "Enable",
+                                            text = "Fix",
                                             style = MaterialTheme.typography.labelMedium.copy(
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.primary
