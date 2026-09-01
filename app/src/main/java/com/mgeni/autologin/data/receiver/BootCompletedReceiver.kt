@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import com.mgeni.autologin.data.AppLogger
 import com.mgeni.autologin.data.BackgroundManager
+import com.mgeni.autologin.data.PreferencesManager
 
 class BootCompletedReceiver : BroadcastReceiver() {
 
@@ -16,7 +17,12 @@ class BootCompletedReceiver : BroadcastReceiver() {
             action == Intent.ACTION_MY_PACKAGE_REPLACED ||
             action == Intent.ACTION_LOCKED_BOOT_COMPLETED
         ) {
-            BackgroundManager.registerBackgroundNetworkCallback(context)
+            val prefs = PreferencesManager(context)
+            if (prefs.hasCompletedOnboarding) {
+                BackgroundManager.registerBackgroundNetworkCallback(context)
+            } else {
+                AppLogger.d("BOOT_RECEIVER", "Onboarding not completed; skipping background callback registration.")
+            }
         }
     }
 }

@@ -433,8 +433,7 @@ class MainViewModel(
             _isBackgroundChecking.value = false
 
             try {
-                val portalUrl = preferencesManager.portalUrl
-                when (val pageResult = portalClient.fetchLoginPage(portalUrl)) {
+                when (val pageResult = fetchCaptivePortalLoginPage()) {
                     is PageFetchResult.AlreadyAuthenticated -> {
                         AppLogger.i("VIEW_MODEL", "Portal confirmed device is already authenticated during form submit.")
                         _uiState.value = MainUiState.AlreadyConnected
@@ -495,8 +494,7 @@ class MainViewModel(
             _backgroundStatusMessage.value = "Signing in…"
         }
 
-        var slowJob: Job? = null
-        slowJob = viewModelScope.launch {
+        val slowJob = viewModelScope.launch {
             delay(SLOW_OPERATION_NOTICE_MILLIS)
             if (_uiState.value is MainUiState.Connecting) {
                 _uiState.value = (_uiState.value as MainUiState.Connecting).copy(isTakingLong = true)

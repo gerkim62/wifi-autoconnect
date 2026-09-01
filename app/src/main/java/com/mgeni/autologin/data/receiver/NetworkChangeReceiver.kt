@@ -24,8 +24,8 @@ class NetworkChangeReceiver : BroadcastReceiver() {
 
         val prefs = PreferencesManager(context)
 
-        if (!prefs.hasSavedCredentials()) {
-            AppLogger.d("NET_RECEIVER", "No saved credentials found; skipping background worker.")
+        if (!prefs.hasVerifiedCredentials()) {
+            AppLogger.d("NET_RECEIVER", "No verified credentials found; skipping background worker.")
             return
         }
 
@@ -57,7 +57,7 @@ class NetworkChangeReceiver : BroadcastReceiver() {
 
                 WorkManager.getInstance(context).enqueueUniqueWork(
                     "AutoLoginUniqueWork",
-                    ExistingWorkPolicy.KEEP,
+                    ExistingWorkPolicy.REPLACE,
                     workRequest
                 )
             } else {

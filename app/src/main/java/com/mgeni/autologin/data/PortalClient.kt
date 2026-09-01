@@ -584,7 +584,6 @@ open class PortalClient(
         val postRequest = Request.Builder()
             .url(actionUrl)
             .post(formBody)
-            .header("Content-Type", "application/x-www-form-urlencoded")
             .header("User-Agent", "Mozilla/5.0 (Android; Mobile)")
             .build()
 

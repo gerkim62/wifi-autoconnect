@@ -35,7 +35,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        AppLogger.init(applicationContext)
 
         setContent {
             MgeniTheme {

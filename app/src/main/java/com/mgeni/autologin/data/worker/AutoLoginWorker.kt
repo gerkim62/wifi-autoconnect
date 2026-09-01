@@ -46,12 +46,12 @@ class AutoLoginWorker(
             return Result.failure()
         }
 
-        // Find active or available Wi-Fi network
+        // Find active or available Wi-Fi network (never fall back to cellular)
         val wifiNetwork = cm.allNetworks.firstOrNull { net ->
             val caps = cm.getNetworkCapabilities(net) ?: return@firstOrNull false
             caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
                     caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
-        } ?: cm.activeNetwork
+        }
 
         if (wifiNetwork == null) {
             AppLogger.w("AUTO_LOGIN_WORKER", "No active Wi-Fi network detected.")
