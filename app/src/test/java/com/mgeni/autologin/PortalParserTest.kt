@@ -189,4 +189,69 @@ class PortalParserTest {
         val dns = NetworkBoundDns(network = null)
         dns.lookup("some.unknown.invalid.nonexistent.domain.test")
     }
+
+    @Test
+    fun `extractHtmlRedirectUrl extracts URL from meta-refresh HTML`() {
+        val metaRefreshHtml = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Web Authentication Redirect</title>
+                <meta http-equiv="refresh" content="0; url=http://10.10.10.10/login.html?redirect=http://10.81.0.253/login.html">
+            </head>
+            <body>
+                <p>Redirecting to authentication portal...</p>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val redirectUrl = portalClient.extractHtmlRedirectUrl(metaRefreshHtml, "http://10.81.0.253/login.html")
+        assertEquals("http://10.10.10.10/login.html?redirect=http://10.81.0.253/login.html", redirectUrl)
+    }
+
+    @Test
+    fun `extractHtmlRedirectUrl extracts relative URL and resolves against baseUrl`() {
+        val metaRefreshHtml = """
+            <html>
+            <head>
+                <meta http-equiv="refresh" content="1; url=/auth/login">
+            </head>
+            </html>
+        """.trimIndent()
+
+        val redirectUrl = portalClient.extractHtmlRedirectUrl(metaRefreshHtml, "http://10.81.0.253/portal/")
+        assertEquals("http://10.81.0.253/auth/login", redirectUrl)
+    }
+
+    @Test
+    fun `extractHtmlRedirectUrl extracts JS window location redirect`() {
+        val jsRedirectHtml = """
+            <html>
+            <head><title>Redirecting</title></head>
+            <body>
+                <script>
+                    window.location.href = "http://10.10.10.10/login.html";
+                </script>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val redirectUrl = portalClient.extractHtmlRedirectUrl(jsRedirectHtml, "http://10.81.0.253/login.html")
+        assertEquals("http://10.10.10.10/login.html", redirectUrl)
+    }
+
+    @Test
+    fun `extractHtmlRedirectUrl returns null when no redirect present`() {
+        val standardHtml = """
+            <html>
+            <head><title>Login</title></head>
+            <body>
+                <form action="/login"><input type="text" name="user"/></form>
+            </body>
+            </html>
+        """.trimIndent()
+
+        val redirectUrl = portalClient.extractHtmlRedirectUrl(standardHtml, "http://10.81.0.253/login.html")
+        assertEquals(null, redirectUrl)
+    }
 }

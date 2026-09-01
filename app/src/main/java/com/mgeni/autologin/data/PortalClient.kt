@@ -394,12 +394,42 @@ open class PortalClient(
                         "<-- [Hop $redirectsFollowed] $code ${response.message} (${hopElapsed}ms)\nHeaders: ${response.headers}"
                     )
 
+                    val location = response.header("Location")
                     if (response.isRedirect) {
-                        val location = response.header("Location")
                         AppLogger.i("PORTAL_FETCH", "Redirect Location: $location")
                         if (!location.isNullOrBlank()) {
                             val resolvedUrl = currentUrl.toHttpUrlOrNull()?.resolve(location)?.toString() ?: location
                             nextRedirectUrl = resolvedUrl
+                        }
+                    } else if (code == 200) {
+                        if (!location.isNullOrBlank()) {
+                            val resolvedUrl = currentUrl.toHttpUrlOrNull()?.resolve(location)?.toString() ?: location
+                            if (isPermittedCleartextDestination(resolvedUrl)) {
+                                AppLogger.w("PORTAL_FETCH", "Detected non-standard 200 OK with Location header (Cisco-style soft redirect). Following hop to: $resolvedUrl")
+                                nextRedirectUrl = resolvedUrl
+                            } else {
+                                AppLogger.w("PORTAL_FETCH", "Blocked non-standard 200 OK redirect to disallowed cleartext destination: $resolvedUrl")
+                            }
+                        }
+
+                        if (nextRedirectUrl == null) {
+                            val htmlBody = response.body?.string().orEmpty()
+                            val htmlRedirect = extractHtmlRedirectUrl(htmlBody, currentUrl)
+                            if (!htmlRedirect.isNullOrBlank()) {
+                                val resolvedUrl = currentUrl.toHttpUrlOrNull()?.resolve(htmlRedirect)?.toString() ?: htmlRedirect
+                                if (isPermittedCleartextDestination(resolvedUrl)) {
+                                    AppLogger.w("PORTAL_FETCH", "Detected HTML-based redirect in 200 OK response. Following hop to: $resolvedUrl")
+                                    nextRedirectUrl = resolvedUrl
+                                } else {
+                                    AppLogger.w("PORTAL_FETCH", "Blocked HTML redirect to disallowed cleartext destination: $resolvedUrl")
+                                }
+                            }
+
+                            if (nextRedirectUrl == null) {
+                                val htmlSummary = AppLogger.extractHtmlSummary(htmlBody)
+                                AppLogger.d("PORTAL_FETCH", "HTML response ($htmlSummary, ${htmlBody.length} bytes)")
+                                return@withContext parseLoginPage(htmlBody, currentUrl)
+                            }
                         }
                     } else {
                         if (!response.isSuccessful) {
@@ -483,6 +513,46 @@ open class PortalClient(
     }
 
     /**
+     * Extracts a redirect target URL from HTML if present (e.g. meta-refresh or JS redirects).
+     */
+    open fun extractHtmlRedirectUrl(html: String, baseUrl: String): String? {
+        if (html.isBlank()) return null
+        return try {
+            val doc = Jsoup.parse(html, baseUrl)
+
+            // 1. Meta-refresh tag: <meta http-equiv="refresh" content="0; url=http://..." />
+            val metaRefresh = doc.selectFirst("meta[http-equiv=refresh i], meta[http-equiv=Refresh]")
+                ?: doc.selectFirst("meta[name=refresh i]")
+            if (metaRefresh != null) {
+                val content = metaRefresh.attr("content")
+                val urlMatch = Regex("""(?i)\burl\s*=\s*['"]?([^'">\s]+)""").find(content)
+                if (urlMatch != null) {
+                    val rawTarget = urlMatch.groupValues[1].trim()
+                    if (rawTarget.isNotBlank()) {
+                        val resolved = baseUrl.toHttpUrlOrNull()?.resolve(rawTarget)?.toString() ?: rawTarget
+                        return resolved
+                    }
+                }
+            }
+
+            // 2. JavaScript location redirects: window.location, document.location
+            val jsLocationRegex = Regex("""(?i)(?:window|document)\.location(?:\.href)?\s*=\s*['"]([^'"]+)['"]""")
+            val jsMatch = jsLocationRegex.find(html)
+            if (jsMatch != null) {
+                val rawTarget = jsMatch.groupValues[1].trim()
+                if (rawTarget.isNotBlank()) {
+                    val resolved = baseUrl.toHttpUrlOrNull()?.resolve(rawTarget)?.toString() ?: rawTarget
+                    return resolved
+                }
+            }
+
+            null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
      * Parses the HTML of the portal page to extract au_pxytimetag and form action.
      */
     open fun parseLoginPage(html: String, baseUrl: String): PageFetchResult {
@@ -506,6 +576,8 @@ open class PortalClient(
                 return PageFetchResult.Error(htmlAuth.reason)
             }
             val pageTitle = doc.title().trim()
+            val htmlSnippet = html.take(500)
+            AppLogger.d("PORTAL_PARSER", "Raw HTML snippet (${htmlSnippet.length} chars): $htmlSnippet")
             AppLogger.w("PORTAL_PARSER", "Missing au_pxytimetag input in form (Page Title: \"$pageTitle\"). Captive portal template is unsupported by WifiAuto.")
             return PageFetchResult.Error(
                 "Only the \"guest\" Wi-Fi is supported today. Make sure you're connected to \"guest\", or contact the developer if this is unexpected."
